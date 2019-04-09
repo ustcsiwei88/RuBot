@@ -160,6 +160,13 @@ public:
   {
     ROS_INFO_STREAM_THROTTLE(10,
       "Logical camera: '" << image_msg->models.size() << "' objects.");
+    int i = 0;
+    for(auto &item: image_msg->models){
+      ROS_INFO_STREAM_THROTTLE(10+i,
+      " item: " << ++i <<": " << item << "----");
+    }
+    ROS_INFO_STREAM_THROTTLE(10,
+      "\n");
   }
 
   /// Called when a new Proximity message is received.

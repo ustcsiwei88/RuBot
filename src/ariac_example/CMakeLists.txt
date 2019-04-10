@@ -20,10 +20,10 @@ catkin_package()
 ## Build ##
 ###########
 
-include_directories(include ${catkin_INCLUDE_DIRS})
+include_directories(include ${catkin_INCLUDE_DIRS}, src/eigen-git-mirror/)
 
 ## Declare a C++ executable
-add_executable(ariac_example_node src/ariac_example_node.cpp)
+add_executable(ariac_example_node src/ariac_example_node.cpp src/kinematic.cpp)
 add_dependencies(ariac_example_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(ariac_example_node ${catkin_LIBRARIES})
 

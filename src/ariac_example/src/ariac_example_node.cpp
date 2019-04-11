@@ -27,12 +27,26 @@
 #include <sensor_msgs/Range.h>
 #include <std_msgs/Float32.h>
 #include <std_msgs/String.h>
+
 #include <std_srvs/Trigger.h>
+//#include <std_srvs/SetBool.h>
+
+#include <osrf_gear/VacuumGripperControl.h>
+#include <osrf_gear/ConveyorBeltState.h>
+#include <osrf_gear/VacuumGripperState.h>
+
 #include <trajectory_msgs/JointTrajectory.h>
 // %EndTag(INCLUDE_STATEMENTS)%
 
 // %Tag(START_COMP)%
 /// Start the competition by waiting for and then calling the start ROS Service.
+
+#define MAIN_FILE
+using namespace std;
+
+vector<double> kinematic(vector<double> theta);
+vector<double> invkinematic(vector<double> pose);
+
 void start_competition(ros::NodeHandle & node) {
   // Create a Service client for the correct service, i.e. '/ariac/start_competition'.
   ros::ServiceClient start_client =
@@ -69,7 +83,13 @@ public:
     arm_2_joint_trajectory_publisher_ = node.advertise<trajectory_msgs::JointTrajectory>(
       "/ariac/arm2/arm/command", 10);
     // %EndTag(ADV_CMD)%
+
+    arm_1_gripper_ctrl = node.serviceClient<osrf_gear::VacuumGripperControl>("/ariac/arm1/gripper/control");
+    arm_2_gripper_ctrl = node.serviceClient<osrf_gear::VacuumGripperControl>("/ariac/arm2/gripper/control");
+
   }
+
+
 
   /// Called when a new message is received.
   void current_score_callback(const std_msgs::Float32::ConstPtr & msg) {
@@ -80,6 +100,7 @@ public:
     current_score_ = msg->data;
   }
 
+
   /// Called when a new message is received.
   void competition_state_callback(const std_msgs::String::ConstPtr & msg) {
     if (msg->data == "done" && competition_state_ != "done")
@@ -89,13 +110,15 @@ public:
     competition_state_ = msg->data;
   }
 
+
   /// Called when a new Order message is received.
   void order_callback(const osrf_gear::Order::ConstPtr & order_msg) {
     ROS_INFO_STREAM("Received order:\n" << *order_msg);
     received_orders_.push_back(*order_msg);
   }
 
-  // %Tag(CB_CLASS)%
+
+
   /// Called when a new JointState message is received.
   void arm_1_joint_state_callback(
     const sensor_msgs::JointState::ConstPtr & joint_state_msg)
@@ -110,6 +133,7 @@ public:
       send_arm_to_zero_state(arm_1_joint_trajectory_publisher_);
     }
   }
+
 
   void arm_2_joint_state_callback(
     const sensor_msgs::JointState::ConstPtr & joint_state_msg)
@@ -147,11 +171,55 @@ public:
     // Resize the vector to the same length as the joint names.
     // Values are initialized to 0.
     msg.points[0].positions.resize(msg.joint_names.size(), 0.0);
+
+
+    auto res = invkinematic(vector<double>{-0.9,-0.2, -0.06});
+    // for(auto i: res)cout<<i<<" ";
+    // auto res2 = kinematic(res);
+    // for(auto i: res)cout<<i<<" ";
+    msg.points[0].positions[0]=res[0];
+    msg.points[0].positions[1]=res[1];
+    msg.points[0].positions[2]=res[2];
+    msg.points[0].positions[3]=res[3];
+    msg.points[0].positions[4]=res[4];
+    msg.points[0].positions[5]=res[5];
+
     // How long to take getting to the point (floating point seconds).
     msg.points[0].time_from_start = ros::Duration(0.001);
     ROS_INFO_STREAM("Sending command:\n" << msg);
     joint_trajectory_publisher.publish(msg);
   }
+
+
+
+  void send_arm_to_state(ros::Publisher & joint_trajectory_publisher, std::vector<double> joints) {
+    // Create a message to send.
+    trajectory_msgs::JointTrajectory msg;
+
+    // Fill the names of the joints to be controlled.
+    // Note that the vacuum_gripper_joint is not controllable.
+    msg.joint_names.clear();
+    msg.joint_names.push_back("shoulder_pan_joint");
+    msg.joint_names.push_back("shoulder_lift_joint");
+    msg.joint_names.push_back("elbow_joint");
+    msg.joint_names.push_back("wrist_1_joint");
+    msg.joint_names.push_back("wrist_2_joint");
+    msg.joint_names.push_back("wrist_3_joint");
+    msg.joint_names.push_back("linear_arm_actuator_joint");
+    // Create one point in the trajectory.
+    msg.points.resize(1);
+    // Resize the vector to the same length as the joint names.
+    // Values are initialized to 0.
+    msg.points[0].positions.resize(msg.joint_names.size(), 0.0);
+    for(int i=0;i<6;i++){
+      msg.points[0].positions[i] = joints[i];
+    }
+    // How long to take getting to the point (floating point seconds).
+    msg.points[0].time_from_start = ros::Duration(0.5);
+    ROS_INFO_STREAM("Sending command:\n" << msg);
+    joint_trajectory_publisher.publish(msg);
+  }
+
   // %EndTag(ARM_ZERO)%
 
   /// Called when a new LogicalCameraImage message is received.
@@ -160,32 +228,101 @@ public:
   {
     ROS_INFO_STREAM_THROTTLE(10,
       "Logical camera: '" << image_msg->models.size() << "' objects.");
-    int i = 0;
-    for(auto &item: image_msg->models){
-      ROS_INFO_STREAM_THROTTLE(10+i,
-      " item: " << ++i <<": " << item << "----");
-    }
-    ROS_INFO_STREAM_THROTTLE(10,
-      "\n");
+    // int i = 0;
+    // for(auto &item: image_msg->models){
+    //   ROS_INFO_STREAM_THROTTLE(10+i,
+    //   " item: " << ++i <<": " << item << "----");
+    // }
+    // ROS_INFO_STREAM_THROTTLE(10,
+    //   "\n");
   }
 
   /// Called when a new Proximity message is received.
   void break_beam_callback(const osrf_gear::Proximity::ConstPtr & msg) {
     if (msg->object_detected) {  // If there is an object in proximity.
       ROS_INFO("Break beam triggered.");
+      send_arm_to_state(arm_1_joint_trajectory_publisher_, invkinematic(vecotr<double>{}));
     }
+  }
+
+  void belt_state_callback(const osrf_gear::ConveyorBeltState::ConstPtr & msg){
+    belt_power = msg->power;
   }
 
 private:
   std::string competition_state_;
   double current_score_;
+
+  double belt_power;
+
+  bool catched1, catched2;
+
+  const double maxBeltVel = 0.2;
+
   ros::Publisher arm_1_joint_trajectory_publisher_;
   ros::Publisher arm_2_joint_trajectory_publisher_;
+  
+  ros::ServiceClient arm_1_gripper_ctrl;
+  ros::ServiceClient arm_2_gripper_ctrl;
+
   std::vector<osrf_gear::Order> received_orders_;
   sensor_msgs::JointState arm_1_current_joint_states_;
   sensor_msgs::JointState arm_2_current_joint_states_;
   bool arm_1_has_been_zeroed_;
   bool arm_2_has_been_zeroed_;
+
+  void open_gripper(int num){
+    osrf_gear::VacuumGripperControl srv;
+    srv.request.enable = true;
+    if(num==1){
+      arm_1_gripper_ctrl.call(srv);
+    }
+    else{
+      arm_2_gripper_ctrl.call(srv);
+    }
+
+    if(!srv.response.success){
+      ROS_ERROR_STREAM("Gripper Failed");
+    }
+    else{
+      ROS_INFO("Gripper openned");
+    }
+  }
+
+  void gripper_1_callback(const::VacuumGripperState::ConstPtr & msg){
+    if(!catched1){
+      if(msg->attached){
+
+      }
+    }
+  }
+
+  void gripper_2_callback(const::VacuumGripperState::ConstPtr & msg){
+    if(!catched2){
+      if(msg->attached){
+
+      }
+    }
+  }
+
+  void close_gripper(int num){
+    osrf_gear::VacuumGripperControl srv;
+    srv.request.enable = false;
+    if(num==1){
+      arm_1_gripper_ctrl.call(srv);
+    }
+    else{
+      arm_2_gripper_ctrl.call(srv);
+    }
+
+    if(!srv.response.success){
+      ROS_ERROR_STREAM("Gripper Failed");
+    }
+    else{
+      ROS_INFO("Gripper openned");
+    }
+
+  }
 };
 
 void proximity_sensor_callback(const sensor_msgs::Range::ConstPtr & msg) {
@@ -257,6 +394,10 @@ int main(int argc, char ** argv) {
   // Subscribe to the '/ariac/laser_profiler_1' topic.
   ros::Subscriber laser_profiler_subscriber = node.subscribe(
     "/ariac/laser_profiler_1", 10, laser_profiler_callback);
+
+  ros::Subscriber belt_state_subscriber = node.subscribe(
+    "/ariac/conveyor/state", 10, 
+    &MyCompetitionClass::belt_state_callback, &comp_class);
 
   ROS_INFO("Setup complete.");
   start_competition(node);

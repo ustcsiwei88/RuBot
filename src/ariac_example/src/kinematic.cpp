@@ -24,37 +24,49 @@ vector<double> kinematic(vector<double> theta){
 	for(int i=1; i<6; i++){
 		res *= Z[i] * X[i];
 	}
-	std::cout << res << std::endl;
+	//std::cout << res << std::endl;
 	return vector<double>{res(0,3), res(1,3), res(2,3)};
 }
 
-void invkinematic(vector<double> pose){
+vector<double> invkinematic(vector<double> pose){
 	
 	double x=-pose[1], y=-pose[0];
 	double h=pose[2]-d[0]+d[5];
-	cout<<"h"<<h<<endl;
+
 	double tmp1 = sqrt(x*x + y*y - d[3]*d[3]);
 	double tmp = sqrt(pow(tmp1 + d[4],2) + h*h);
 	vector<double> theta(6,0);
-	
 	theta[0] = (x==0? PI/2:atan(x/y)) - atan(d[3]/tmp1);
 	theta[1] = -(asin(h/tmp) + acos(-(a[1]*a[1]+tmp*tmp-a[2]*a[2])/(2*a[1]*tmp)));
-	theta[2] = - PI + acos((a[1]*a[1]+a[2]*a[2]-tmp*tmp)/(2*a[1]*a[2]));
+	theta[2] = PI - acos((a[1]*a[1]+a[2]*a[2]-tmp*tmp)/(2*a[1]*a[2]));
 	theta[3] = PI - acos(h/tmp) - acos(-(a[2]*a[2]+tmp*tmp-a[1]*a[1])/(2*a[2]*tmp));
 	theta[4] = PI/2;
-	for(double th: theta){
-		cout<<th<<", ";
-	}
-	cout<<endl;
+
+	// for(auto i: theta){
+	// 	cout<<i<<endl;
+	// }
+	return theta;
 }
+
+/*
+
 #ifndef MAIN_FILE
 #define MAIN_FILE
 
 
 int main(){
-	vector<double> res = kinematic(vector<double>{1,0,0,PI/2,PI/2,0});
-	invkinematic(res);
+	double x,y,z;
+	cin>>x>>y>>z;
+	auto res1 = invkinematic(vector<double>{x, y, z});
+	auto res = kinematic(res1);
+	for(auto i:res1)cout<<i<<" ";
+		cout<<endl;
+	for(auto i:res)cout<<i<<" ";
+		cout<<endl;
+
+	//invkinematic(res);
 	return 0;
 }
 
 #endif
+*/

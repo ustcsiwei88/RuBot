@@ -98,8 +98,8 @@ public:
     arm_1_gripper_ctrl = node.serviceClient<osrf_gear::VacuumGripperControl>("/ariac/arm1/gripper/control");
     arm_2_gripper_ctrl = node.serviceClient<osrf_gear::VacuumGripperControl>("/ariac/arm2/gripper/control");
 
-    agv_1 = node.serviceClient<osrf_gear::VacuumGripperControl>("/ariac/agv1");
-    agv_2 = node.serviceClient<osrf_gear::VacuumGripperControl>("/ariac/agv2");
+    agv_1 = node.serviceClient<osrf_gear::AGVControl>("/ariac/agv1");
+    agv_2 = node.serviceClient<osrf_gear::AGVControl>("/ariac/agv2");
 
     arm_1_joint.resize(6);
     arm_2_joint.resize(6);
@@ -113,6 +113,11 @@ public:
 
     catched_1 = false;
     catched_2 = false;
+
+    enabled_1 = false;
+    enabled_2 = false;
+
+    
   }
 
 
@@ -166,35 +171,40 @@ public:
     arm_1_joint[4] = arm_1_current_joint_states_.position[5]; //wrist2
     arm_1_joint[5] = arm_1_current_joint_states_.position[6]; //wrist3
     arm_1_linear = arm_1_current_joint_states_.position[1]; //linear
-    
+    //cout<<arm_1_linear<<"-----"<<endl;
     switch(arm_1_state){
       case IDLE:
         if(!event.empty()){
           ros::Duration tmp = ros::Time::now() - event[0];
 
           double ttc = 1.5;
-          double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.25 - 0.02;
+          double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.25 ;
           //double linear = 0;
           //if(fabs(dist)>0.1)
           send_arm_to_state_2(arm_1_joint_trajectory_publisher_, 
             invkinematic(vector<double>{-0.92, -belt_power / 100 * maxBeltVel * ttc / 4, 0.03}), 
-            invkinematic(vector<double>{-0.92, 0, -0.07}), ttc, -dist);
+            invkinematic(vector<double>{-0.92, -0.02, -0.07}), ttc, -dist);
           event.pop_front();
           arm_1_state = TRANSIT;
         }
         break;
       case TRANSIT:
-        open_gripper(1);
+        if(!enabled_1)
+          open_gripper(1);
         if(catched_1){
           arm_1_state=TRANSFER;
-          send_arm_to_state_2(arm_1_joint_trajectory_publisher_, invkinematic(vector<double>{0.0,-0.9,0.0}), 
-            invkinematic(vector<double>{0.0, -0.9, -0.1}), 1.5, 2.35);
+          auto start = kinematic(arm_1_joint);
+          start[2]+=0.17;
+
+          send_arm_to_state_n(arm_1_joint_trajectory_publisher_, vector<vector<double>>{invkinematic(start), 
+            invkinematic(vector<double>{0.0, -0.9, 0.1}), invkinematic(vector<double>{0.0,-0.9, -0.1})}, vector<double>{0.2, 1.1, 1.5}, vector<double>{arm_1_linear , 1.18, 1.18});
         }
         break;
       case TRANSFER:
-        if(reached(arm_1_joint, arm_1_joint_goal)){
+        if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3){
           close_gripper(1);
           arm_1_state = IDLE;
+          
         }
         break;
     }
@@ -288,9 +298,9 @@ public:
     trajectory_msgs::JointTrajectory msg;
 
     if(joint_trajectory_publisher == arm_1_joint_trajectory_publisher_)
-      arm_1_joint_goal = joints;
+      arm_1_joint_goal = joints, arm_1_linear_goal = linear;
     else
-      arm_2_joint_goal = joints;
+      arm_2_joint_goal = joints, arm_2_linear_goal = linear;
     // Fill the names of the joints to be controlled.
     // Note that the vacuum_gripper_joint is not controllable.
     msg.joint_names.clear();
@@ -321,9 +331,9 @@ public:
     trajectory_msgs::JointTrajectory msg;
 
     if(joint_trajectory_publisher == arm_1_joint_trajectory_publisher_)
-      arm_1_joint_goal = joints2;
+      arm_1_joint_goal = joints2, arm_1_linear_goal = linear;
     else
-      arm_2_joint_goal = joints2;
+      arm_2_joint_goal = joints2, arm_2_linear_goal = linear;
     // Fill the names of the joints to be controlled.
     // Note that the vacuum_gripper_joint is not controllable.
     msg.joint_names.clear();
@@ -358,6 +368,42 @@ public:
     joint_trajectory_publisher.publish(msg);
   }
 
+  void send_arm_to_state_n(ros::Publisher & joint_trajectory_publisher, vector<std::vector<double>> joints_l, vector<double> t, vector<double> linear) {
+    // Create a message to send.
+    trajectory_msgs::JointTrajectory msg;
+
+    if(joint_trajectory_publisher == arm_1_joint_trajectory_publisher_)
+      arm_1_joint_goal = *joints_l.rbegin(), arm_1_linear_goal = *linear.rbegin();
+    else
+      arm_2_joint_goal = *joints_l.rbegin(), arm_2_linear_goal = *linear.rbegin();
+    // Fill the names of the joints to be controlled.
+    // Note that the vacuum_gripper_joint is not controllable.
+    msg.joint_names.clear();
+    msg.joint_names.push_back("shoulder_pan_joint");
+    msg.joint_names.push_back("shoulder_lift_joint");
+    msg.joint_names.push_back("elbow_joint");
+    msg.joint_names.push_back("wrist_1_joint");
+    msg.joint_names.push_back("wrist_2_joint");
+    msg.joint_names.push_back("wrist_3_joint");
+    msg.joint_names.push_back("linear_arm_actuator_joint");
+    // Create one point in the trajectory.
+    msg.points.resize(joints_l.size());
+    // Resize the vector to the same length as the joint names.
+    // Values are initialized to 0.
+    
+    for(int i=0;i<joints_l.size();i++){
+      msg.points[i].positions.resize(msg.joint_names.size(), 0.0);
+      for(int j=0;j<6;j++){
+        msg.points[i].positions[j] = joints_l[i][j];
+      }
+      msg.points[i].positions[6] = linear[i];
+      msg.points[i].time_from_start = ros::Duration(t[i]);
+    }
+
+    // How long to take getting to the point (floating point seconds).
+    ROS_INFO_STREAM("Sending command:\n" << msg);
+    joint_trajectory_publisher.publish(msg);
+  }
   // %EndTag(ARM_ZERO)%
 
   /// Called when a new LogicalCameraImage message is received.
@@ -421,9 +467,10 @@ public:
 
   void agv(int num, int order, int kit){
     osrf_gear::AGVControl srv;
-    srv.request.shipment_type = string("order_") + to_string(order) + string("kit_") + to_string(kit);
+    srv.request.shipment_type = string("order_") + to_string(order) + string("_shipment_") + to_string(kit);
     if(num==1){
       agv_1.call(srv);
+      // cout<<"shipped"<<endl;
     }
     else{
       agv_2.call(srv);
@@ -432,6 +479,7 @@ public:
 
   void gripper_1_callback(const osrf_gear::VacuumGripperState::ConstPtr & msg){
     catched_1 = msg->attached;
+    enabled_1 = msg->enabled;
     // if(catched1){
     //   if(!msg->attached){
     //     transfer1=false;
@@ -454,6 +502,7 @@ public:
 
   void gripper_2_callback(const osrf_gear::VacuumGripperState::ConstPtr & msg){
     catched_2 = msg->attached;
+    enabled_2 = msg->enabled;
     // if(!transfer1){
     //   if(!msg->attached){
     //     transfer1=false;
@@ -500,6 +549,8 @@ private:
 
   double arm_1_linear, arm_2_linear;
 
+  double arm_1_linear_goal, arm_2_linear_goal;
+
   deque<ros::Time> event;
 
   const double maxBeltVel = 0.2;
@@ -522,6 +573,8 @@ private:
   State arm_2_state;
 
   bool catched_1, catched_2;
+
+  bool enabled_1, enabled_2;
 
 };
 

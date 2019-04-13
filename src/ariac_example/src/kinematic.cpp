@@ -34,6 +34,25 @@ vector<double> invkinematic(vector<double> pose){
 	double h=pose[2]-d[0]+d[5];
 
 	double tmp1 = sqrt(x*x + y*y - d[3]*d[3]);
+	double tmp = sqrt(pow(tmp1 - d[4],2) + h*h);
+	vector<double> theta(6,0);
+	if(y>=0){
+		theta[0] = (y==0? PI/2:atan(x/y)) + atan(d[3]/tmp1) + PI;
+		theta[1] = -PI+(asin(h/tmp) + acos(-(a[1]*a[1]+tmp*tmp-a[2]*a[2])/(2*a[1]*tmp)));
+		theta[2] = - PI + acos((a[1]*a[1]+a[2]*a[2]-tmp*tmp)/(2*a[1]*a[2]));
+		theta[3] = acos(h/tmp) + acos(-(a[2]*a[2]+tmp*tmp-a[1]*a[1])/(2*a[2]*tmp)) - PI;
+		theta[4] = PI/2;
+	}
+	else{
+		y=-y;
+		theta[0] = -(atan(x/y)) + atan(d[3]/tmp1);
+		theta[1] = -PI+(asin(h/tmp) + acos(-(a[1]*a[1]+tmp*tmp-a[2]*a[2])/(2*a[1]*tmp)));
+		theta[2] = - PI + acos((a[1]*a[1]+a[2]*a[2]-tmp*tmp)/(2*a[1]*a[2]));
+		theta[3] = acos(h/tmp) + acos(-(a[2]*a[2]+tmp*tmp-a[1]*a[1])/(2*a[2]*tmp)) - PI;
+		theta[4] = PI/2;
+	}
+	#if 0
+	double tmp1 = sqrt(x*x + y*y - d[3]*d[3]);
 	double tmp = sqrt(pow(tmp1 + d[4],2) + h*h);
 	vector<double> theta(6,0);
 	if(y>=0){
@@ -51,6 +70,7 @@ vector<double> invkinematic(vector<double> pose){
 		theta[3] = PI - acos(h/tmp) - acos(-(a[2]*a[2]+tmp*tmp-a[1]*a[1])/(2*a[2]*tmp));
 		theta[4] = PI/2;
 	}
+	#endif
 	// for(auto i: theta){
 	// 	cout<<i<<endl;
 	// }

@@ -42,6 +42,7 @@ vector<double> invkinematic(vector<double> pose){
 		theta[2] = - PI + acos((a[1]*a[1]+a[2]*a[2]-tmp*tmp)/(2*a[1]*a[2]));
 		theta[3] = acos(h/tmp) + acos(-(a[2]*a[2]+tmp*tmp-a[1]*a[1])/(2*a[2]*tmp)) - PI;
 		theta[4] = PI/2;
+		theta[5] = theta[0];
 	}
 	else{
 		y=-y;
@@ -50,6 +51,7 @@ vector<double> invkinematic(vector<double> pose){
 		theta[2] = - PI + acos((a[1]*a[1]+a[2]*a[2]-tmp*tmp)/(2*a[1]*a[2]));
 		theta[3] = acos(h/tmp) + acos(-(a[2]*a[2]+tmp*tmp-a[1]*a[1])/(2*a[2]*tmp)) - PI;
 		theta[4] = PI/2;
+		theta[5] = theta[0];
 	}
 	#if 0
 	double tmp1 = sqrt(x*x + y*y - d[3]*d[3]);

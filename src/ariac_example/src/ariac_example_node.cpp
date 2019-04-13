@@ -119,6 +119,8 @@ public:
     enabled_1 = false;
     enabled_2 = false;
 
+    fum_1_init = true;
+    fum_2_init = true;
     
   }
 
@@ -161,8 +163,8 @@ public:
   void arm_1_joint_state_callback(
     const sensor_msgs::JointState::ConstPtr & joint_state_msg)
   {
-    ROS_INFO_STREAM_THROTTLE(10,
-      "Joint States arm 1 (throttled to 0.1 Hz):\n" << *joint_state_msg);
+    // ROS_INFO_STREAM_THROTTLE(10,
+    //   "Joint States arm 1 (throttled to 0.1 Hz):\n" << *joint_state_msg);
     // ROS_INFO_STREAM("Joint States:\n" << *joint_state_msg);
     arm_1_current_joint_states_ = *joint_state_msg;
     
@@ -176,21 +178,23 @@ public:
     //cout<<arm_1_linear<<"-----"<<endl;
     switch(arm_1_state){
       case IDLE:
-        if(!event.empty()){
-          ros::Duration tmp = ros::Time::now() - event[0];
+      if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3)
+        fumble(4), open_gripper(1);
+        // if(!event.empty()){
+        //   ros::Duration tmp = ros::Time::now() - event[0];
 
-          double ttc = 1.5;
-          double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.25 ;
-          //double linear = 0;
-          //if(fabs(dist)>0.1)
-          send_arm_to_state_n(arm_1_joint_trajectory_publisher_, 
-            vector<vector<double>>{
-              invkinematic(vector<double>{-0.92, -0.02, 0.03}), 
-              invkinematic(vector<double>{-0.92, -0.02, -0.07})
-            }, vector<double>{ttc*3/4, ttc}, vector<double>{-dist + belt_power / 100 * maxBeltVel * ttc / 4, -dist});
-          event.pop_front();
-          arm_1_state = TRANSIT;
-        }
+        //   double ttc = 1.5;
+        //   double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.25 ;
+        //   //double linear = 0;
+        //   //if(fabs(dist)>0.1)
+        //   send_arm_to_state_n(arm_1_joint_trajectory_publisher_, 
+        //     vector<vector<double>>{
+        //       invkinematic(vector<double>{-0.92, -0.02, 0.03}), 
+        //       invkinematic(vector<double>{-0.92, -0.02, -0.07})
+        //     }, vector<double>{ttc*3/4, ttc}, vector<double>{-dist + belt_power / 100 * maxBeltVel * ttc / 4, -dist});
+        //   event.pop_front();
+        //   arm_1_state = TRANSIT;
+        // }
         break;
       case TRANSIT:
         if(!enabled_1)
@@ -220,6 +224,46 @@ public:
     }
   }
 
+  double dx = -1;
+  double dy = 0;
+  void fumble(int bin_num){
+    bin_num--;
+    double y = bin_y[bin_num];
+    double x = -0.4;
+    double z = 0.65;
+    cout<<"fumbling"<<endl;
+    if(dx==-1){
+      dx=-0;dy=-0.25;
+    }
+    else{
+      dx += 0.05;
+      //dy += 0.05;
+      if(dx==0.3){dx=0.0,dy+=0.05;}
+    }
+    if(bin_num>=3){
+      // for(double dx = -0.3; dx<0.3; dx+= 0.05){
+      //   for(double dy = -0.3; dy<0.3; dy+= 0.05){
+          vector<double> p1;
+          if(fum_1_init)p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9 + 0.7});
+          else p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.05});
+          auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9});
+          auto p3 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.1});
+          auto res = kinematic(p1);
+          //auto p1 = invkinematic(vector<double>{-x+dx, dy, z+0.05});
+          if(fum_1_init)
+            send_arm_to_state_n(arm_1_joint_trajectory_publisher_, vector<vector<double>>{p1,p2,p3}, 
+              vector<double>{1.0, 1.5, 2}, vector<double>{y - arm_1_zero, y - arm_1_zero, y - arm_1_zero});
+          else
+            send_arm_to_state_n(arm_1_joint_trajectory_publisher_, vector<vector<double>>{p1,p2,p3}, 
+              vector<double>{0.2, 0.4, 0.6}, vector<double>{y - arm_1_zero, y - arm_1_zero, y - arm_1_zero});
+          fum_1_init=false;
+      //     while(reached())
+      //   }
+      // }
+    }
+
+  }
+  
   bool reached(vector<double>&s, vector<double>& t){
     double sum=0;
     for(int i=0;i<6;i++){
@@ -232,8 +276,8 @@ public:
   void arm_2_joint_state_callback(
     const sensor_msgs::JointState::ConstPtr & joint_state_msg)
   {
-    ROS_INFO_STREAM_THROTTLE(10,
-      "Joint States arm 2 (throttled to 0.1 Hz):\n" << *joint_state_msg);
+    // ROS_INFO_STREAM_THROTTLE(10,
+    //   "Joint States arm 2 (throttled to 0.1 Hz):\n" << *joint_state_msg);
     // ROS_INFO_STREAM("Joint States:\n" << *joint_state_msg);
     arm_2_current_joint_states_ = *joint_state_msg;
 
@@ -279,16 +323,10 @@ public:
     // Values are initialized to 0.
     msg.points[0].positions.resize(msg.joint_names.size(), 0.0);
 
-    // -0.92 -0.2 0
-    auto res = invkinematic(vector<double>{0,-0.9, 0.15});
-    msg.points[0].positions[0]=res[0];
-    msg.points[0].positions[1]=res[1];
-    msg.points[0].positions[2]=res[2];
-    msg.points[0].positions[3]=res[3];
-    msg.points[0].positions[4]=res[4];
-    msg.points[0].positions[5]=res[5];
-    msg.points[0].positions[6]=2.35;
-
+    if(joint_trajectory_publisher == arm_1_joint_trajectory_publisher_)
+      arm_1_linear_goal = 0, arm_1_joint_goal.resize(6,0), close_gripper(1);
+    else
+      arm_2_linear_goal = 0, arm_2_joint_goal.resize(6,0), close_gripper(2);
     // How long to take getting to the point (floating point seconds).
     msg.points[0].time_from_start = ros::Duration(0.5);
     ROS_INFO_STREAM("Sending command:\n" << msg);
@@ -326,7 +364,7 @@ public:
     msg.points[0].positions[6] = linear;
     // How long to take getting to the point (floating point seconds).
     msg.points[0].time_from_start = ros::Duration(t);
-    ROS_INFO_STREAM("Sending command:\n" << msg);
+    // ROS_INFO_STREAM("Sending command:\n" << msg);
     joint_trajectory_publisher.publish(msg);
   }  
 
@@ -368,7 +406,7 @@ public:
     // How long to take getting to the point (floating point seconds).
     msg.points[0].time_from_start = ros::Duration(ros::Duration(t).toSec()*3/4);
     msg.points[1].time_from_start = ros::Duration(t);
-    ROS_INFO_STREAM("Sending command:\n" << msg);
+    // ROS_INFO_STREAM("Sending command:\n" << msg);
     joint_trajectory_publisher.publish(msg);
   }
 
@@ -396,7 +434,7 @@ public:
     // Values are initialized to 0.
     
     for(int i=0;i<joints_l.size();i++){
-      msg.points[i].positions.resize(msg.joint_names.size(), 0.0);
+      msg.points[i].positions.resize(msg.joint_names.size());
       for(int j=0;j<6;j++){
         msg.points[i].positions[j] = joints_l[i][j];
       }
@@ -405,7 +443,7 @@ public:
     }
 
     // How long to take getting to the point (floating point seconds).
-    ROS_INFO_STREAM("Sending command:\n" << msg);
+    // ROS_INFO_STREAM("Sending command:\n" << msg);
     joint_trajectory_publisher.publish(msg);
   }
   // %EndTag(ARM_ZERO)%
@@ -558,6 +596,25 @@ private:
   deque<ros::Time> event;
 
   const double maxBeltVel = 0.2;
+  // 'bin1': [-0.3, -1.916, 0],
+  // 'bin2': [-0.3, -1.15, 0],
+  // 'bin3': [-0.3, -0.383, 0],
+  // 'bin4': [-0.3, 0.383, 0],
+  // 'bin5': [-0.3, 1.15, 0],
+  // 'bin6': [-0.3, 1.916, 0],
+  const double bin1_y = -1.916;
+  const double bin2_y = -1.15;
+  const double bin3_y = -0.383;
+  const double bin4_y = 0.383;
+  const double bin5_y = 1.15;
+  const double bin6_y = 1.916;
+
+  const vector<double> bin_y{-0.1916, -1.15, -0.383, 0.383, 1.15, 1.916};
+  const double tray_1_y = 3.15;
+  const double tray_2_y = -3.15;
+
+  const double arm_1_zero = 0.92;
+  const double arm_2_zero = -0.92;
 
   ros::Publisher arm_1_joint_trajectory_publisher_;
   ros::Publisher arm_2_joint_trajectory_publisher_;
@@ -579,6 +636,8 @@ private:
   bool catched_1, catched_2;
 
   bool enabled_1, enabled_2;
+
+  bool fum_1_init, fum_2_init;
 
 };
 

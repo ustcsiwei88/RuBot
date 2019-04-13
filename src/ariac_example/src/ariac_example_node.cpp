@@ -40,6 +40,8 @@
 #include <osrf_gear/VacuumGripperState.h>
 #include <osrf_gear/AGVControl.h>
 
+#include <geometry_msgs/Pose.h>
+
 #include <trajectory_msgs/JointTrajectory.h>
 // %EndTag(INCLUDE_STATEMENTS)%
 
@@ -181,9 +183,11 @@ public:
           double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.25 ;
           //double linear = 0;
           //if(fabs(dist)>0.1)
-          send_arm_to_state_2(arm_1_joint_trajectory_publisher_, 
-            invkinematic(vector<double>{-0.92, -belt_power / 100 * maxBeltVel * ttc / 4, 0.03}), 
-            invkinematic(vector<double>{-0.92, -0.02, -0.07}), ttc, -dist);
+          send_arm_to_state_n(arm_1_joint_trajectory_publisher_, 
+            vector<vector<double>>{
+              invkinematic(vector<double>{-0.92, -0.02, 0.03}), 
+              invkinematic(vector<double>{-0.92, -0.02, -0.07})
+            }, vector<double>{ttc*3/4, ttc}, vector<double>{-dist + belt_power / 100 * maxBeltVel * ttc / 4, -dist});
           event.pop_front();
           arm_1_state = TRANSIT;
         }
@@ -194,7 +198,7 @@ public:
         if(catched_1){
           arm_1_state=TRANSFER;
           auto start = kinematic(arm_1_joint);
-          start[2]+=0.17;
+          start[2]+=0.27;
 
           send_arm_to_state_n(arm_1_joint_trajectory_publisher_, vector<vector<double>>{invkinematic(start), 
             invkinematic(vector<double>{0.0, -0.9, 0.1}), invkinematic(vector<double>{0.0,-0.9, -0.1})}, vector<double>{0.2, 1.1, 1.5}, vector<double>{arm_1_linear , 1.18, 1.18});
@@ -641,12 +645,15 @@ int main(int argc, char ** argv) {
 
   // Subscribe to the '/ariac/logical_camera_1' topic.
   ros::Subscriber logical_camera_subscriber = node.subscribe(
-    "/ariac/logical_camera_1", 10,
+    "/ariac/logical_camera_0", 10,
     &MyCompetitionClass::logical_camera_callback, &comp_class);
 
   // Subscribe to the '/ariac/laser_profiler_1' topic.
-  ros::Subscriber laser_profiler_subscriber = node.subscribe(
-    "/ariac/laser_profiler_1", 10, laser_profiler_callback);
+  
+  //TODO:DECISION
+
+  // ros::Subscriber laser_profiler_subscriber = node.subscribe(
+  //   "/ariac/laser_profiler_1", 10, laser_profiler_callback);
 
   ros::Subscriber belt_state_subscriber = node.subscribe(
     "/ariac/conveyor/state", 10, 

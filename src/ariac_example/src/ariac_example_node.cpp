@@ -41,8 +41,14 @@
 #include <osrf_gear/AGVControl.h>
 
 #include <geometry_msgs/Pose.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 #include <trajectory_msgs/JointTrajectory.h>
+
+
+
+
+
 // %EndTag(INCLUDE_STATEMENTS)%
 
 // %Tag(START_COMP)%
@@ -56,6 +62,8 @@ vector<double> invkinematic(vector<double> pose);
 
 enum State{
   IDLE,
+  FUMBLE,
+  CLASSIFY,
   TRANSFER,
   TRANSIT
 };
@@ -81,7 +89,18 @@ void start_competition(ros::NodeHandle & node) {
   }
 }
 // %EndTag(START_COMP)%
-
+class Order{
+public:
+  int priority;
+  int agv;
+  vector<pair<double,double>> position;
+  vector<double> theta;
+  vectir<double> obj_t;
+  vector<bool> finished;
+  vector<bool> shipment_t;
+  Order(int priority=100):priority(priority){
+  }
+};
 /// Example class that can hold state and provide methods that handle incoming data.
 class MyCompetitionClass
 {
@@ -121,6 +140,11 @@ public:
 
     fum_1_init = true;
     fum_2_init = true;
+
+    bin_type.resize(7,-1);    // -1 unknown, 0 empty, 1 disk, 2 gasket, 3 gear, 4 piston_rod, 5 pulley_part
+
+    for(auto i: classify_pos_1) cout<<i<<" ";
+      cout<<endl;
     
   }
 
@@ -148,10 +172,27 @@ public:
 
   /// Called when a new Order message is received.
   void order_callback(const osrf_gear::Order::ConstPtr & order_msg) {
-    ROS_INFO_STREAM("Received order:\n" << *order_msg);
-    received_orders_.push_back(*order_msg);
+    //ROS_INFO_STREAM("Received order:\n" << *order_msg);
+    // Order tmp;
+    received_orders_.resize(received_orders_.size()+1);
+    Order & tmp = received_orders_[received_orders_.size()-1];
+    for(auto & item:order_msg->shipment){
+      tmp.shipment_t.push_back(item.shipment_type);
+      tmp.agv = 1;
+      for(auto & item2: item.products){
+        tmp.obj_t.push_back(type2int(item2.type));
+        tmp.position.emplace_back(item2.position.x, item2.position.y);
+        double x,y,z,w;
+        x = item2.orientation.x;
+        y = item2.orientation.y;
+        z = item2.orientation.z;
+        w = item2.orientation.w;
+        tmp.theta.push_back(atan2(2*(x*w+y*z), 1-2*(z*z+w*w)));
+      }
+    }
+    // for(auto &: order_msg->shipment)
+    // received_orders_.push_back(*order_msg);
   }
-
 
   //stage:
   //idle
@@ -178,23 +219,59 @@ public:
     //cout<<arm_1_linear<<"-----"<<endl;
     switch(arm_1_state){
       case IDLE:
-      if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3)
-        fumble(4), open_gripper(1);
-        // if(!event.empty()){
-        //   ros::Duration tmp = ros::Time::now() - event[0];
+        send_arm_to_state( arm_1_joint_trajectory_publisher_, desk_hand_1, 0.3, 0);break;
+        if(bin_type[4]<0){
+          bin_num_1 = 4;
+          arm_1_state = FUMBLE;
+        }
+        else if(bin_type[5]<0){
+          bin_num_1 = 5;
+          arm_1_state = FUMBLE;
+        }
+        else if(bin_type[6]<0){
+          bin_num_1 = 6;
+          arm_1_state = FUMBLE;
+        }
+        if(!event.empty()){
+          ros::Duration tmp = ros::Time::now() - event[0];
+          double ttc = 1.5;
+          double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.25 ;
+          //double linear = 0;
+          //if(fabs(dist)>0.1)
+          send_arm_to_state_n(arm_1_joint_trajectory_publisher_, 
+            vector<vector<double>>{
+              invkinematic(vector<double>{-0.92, -0.02, 0.03}), 
+              invkinematic(vector<double>{-0.92, -0.02, -0.07})
+            }, vector<double>{ttc*3/4, ttc}, vector<double>{-dist + belt_power / 100 * maxBeltVel * ttc / 4, -dist});
+          event.pop_front();
+          arm_1_state = TRANSIT;
+        }
+        break;
+      case FUMBLE:
+        //open_gripper(1);
+        if(catched_1){
+          if(bin_type[bin_num_1]<0){
+            arm_1_state = CLASSIFY;
+          }
+        }
+        if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3){
+          open_gripper(1);
+          if(!fumble(bin_num_1)){
+            bin_type[bin_num_1]=0; //empty
+            arm_1_state=IDLE;
+          }
+        }
+        break;
+      case CLASSIFY:
+        send_arm_to_state( arm_1_joint_trajectory_publisher_, classify_pos_1, 0.3, 0);
+        count_1=0;
+        if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3){
+          count_1++;
+          if(count_1==4){     //wait around 0.1s for classification
+            bin_type[bin_num_1] = type_1;
 
-        //   double ttc = 1.5;
-        //   double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.25 ;
-        //   //double linear = 0;
-        //   //if(fabs(dist)>0.1)
-        //   send_arm_to_state_n(arm_1_joint_trajectory_publisher_, 
-        //     vector<vector<double>>{
-        //       invkinematic(vector<double>{-0.92, -0.02, 0.03}), 
-        //       invkinematic(vector<double>{-0.92, -0.02, -0.07})
-        //     }, vector<double>{ttc*3/4, ttc}, vector<double>{-dist + belt_power / 100 * maxBeltVel * ttc / 4, -dist});
-        //   event.pop_front();
-        //   arm_1_state = TRANSIT;
-        // }
+          }
+        }
         break;
       case TRANSIT:
         if(!enabled_1)
@@ -224,43 +301,89 @@ public:
     }
   }
 
-  double dx = -1;
-  double dy = 0;
-  void fumble(int bin_num){
+  double dx_1 = -1;
+  double dy_1 = 0.02;
+  bool dir_1 = true;
+  
+  double dx_2 = -1;
+  double dy_2 = 0.02;
+  bool dir_2 = true;
+  
+  int count_1=0, count_2=0;
+
+  bool fumble(int bin_num){
     bin_num--;
     double y = bin_y[bin_num];
     double x = -0.4;
-    double z = 0.65;
+    double z = 0.64;
     cout<<"fumbling"<<endl;
-    if(dx==-1){
-      dx=-0;dy=-0.25;
+    double dx,dy;
+    bool dir;
+    if(bin_num>=3){
+      dx = dx_1, dy=dy_1;dir=dir_1;
+      if(dx==-1){
+        dx=-0.04; dy=-0.24;
+      }
+      else{
+        dx += dir ? 0.06 : -0.06;
+        //dy += 0.05;
+        if(dx > 0.479){dx=0.40, dy+=0.06;dir=!dir;}
+        else if(dx<-0.041){dx=-0.04, dy+=0.06;dir=!dir;}
+      }
+      if(dy>0.239){dx=-1; dir_1=true; dx_1=dx;dy_1=dy;return false;}
+      dx_1=dx;dy_1=dy;dir_1=dir;
     }
     else{
-      dx += 0.05;
-      //dy += 0.05;
-      if(dx==0.3){dx=0.0,dy+=0.05;}
+      dx = dx_2, dy=dy_2;dir=dir_2;
+      if(dx==-1){
+        dx=-0.04; dy=-0.24;
+      }
+      else{
+        dx += dir ? 0.06 : -0.06;
+        //dy += 0.05;
+        if(dx > 0.479){dx=0.40, dy+=0.06;dir=!dir;}
+        else if(dx<-0.041){dx=-0.04, dy+=0.06;dir=!dir;}
+      }
+      if(dy>0.239){dx=-1; dir_2=true; dx_2=dx;dy_2=dy;return false;}
+      dx_2=dx;dy_2=dy;dir_2=dir;
     }
+    // cout<<dx<<" "<<dy<<endl;
     if(bin_num>=3){
-      // for(double dx = -0.3; dx<0.3; dx+= 0.05){
-      //   for(double dy = -0.3; dy<0.3; dy+= 0.05){
-          vector<double> p1;
-          if(fum_1_init)p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9 + 0.7});
-          else p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.05});
-          auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9});
-          auto p3 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.1});
-          auto res = kinematic(p1);
-          //auto p1 = invkinematic(vector<double>{-x+dx, dy, z+0.05});
-          if(fum_1_init)
-            send_arm_to_state_n(arm_1_joint_trajectory_publisher_, vector<vector<double>>{p1,p2,p3}, 
-              vector<double>{1.0, 1.5, 2}, vector<double>{y - arm_1_zero, y - arm_1_zero, y - arm_1_zero});
-          else
-            send_arm_to_state_n(arm_1_joint_trajectory_publisher_, vector<vector<double>>{p1,p2,p3}, 
-              vector<double>{0.2, 0.4, 0.6}, vector<double>{y - arm_1_zero, y - arm_1_zero, y - arm_1_zero});
-          fum_1_init=false;
-      //     while(reached())
-      //   }
-      // }
+      vector<double> p1;
+      if(fum_1_init)p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9 + 0.7});
+      else p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.1});
+      auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.01});
+      auto p3 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.13});
+      auto res = kinematic(p1);
+      //auto p1 = invkinematic(vector<double>{-x+dx, dy, z+0.05});
+      if(fum_1_init)
+        send_arm_to_state_n(arm_1_joint_trajectory_publisher_, vector<vector<double>>{p1,p2,p2,p3}, 
+          vector<double>{1.0, 1.5, 1.6, 2}, 
+          vector<double>{y - arm_1_zero, y - arm_1_zero, y - arm_1_zero, y - arm_1_zero});
+      else
+        send_arm_to_state_n(arm_1_joint_trajectory_publisher_, vector<vector<double>>{p1,p2,p2,p3}, 
+          vector<double>{0.1, 0.17, 0.23, 0.3}, 
+          vector<double>{y - arm_1_zero, y - arm_1_zero, y - arm_1_zero, y - arm_1_zero});
+      fum_1_init=false;
     }
+
+    else{
+      vector<double> p1;
+      if(fum_2_init)p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9 + 0.7});
+      else p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.05});
+      auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9});
+      auto p3 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.1});
+      auto res = kinematic(p1);
+      //auto p1 = invkinematic(vector<double>{-x+dx, dy, z+0.05});
+      if(fum_2_init)
+        send_arm_to_state_n(arm_2_joint_trajectory_publisher_, vector<vector<double>>{p1,p2,p3}, 
+          vector<double>{1.0, 1.5, 2}, vector<double>{y - arm_2_zero, y - arm_2_zero, y - arm_2_zero});
+      else
+        send_arm_to_state_n(arm_2_joint_trajectory_publisher_, vector<vector<double>>{p1,p2,p3}, 
+          vector<double>{0.2, 0.4, 0.6}, vector<double>{y - arm_2_zero, y - arm_2_zero, y - arm_2_zero});
+      fum_2_init=false;
+    }
+    return true;
 
   }
   
@@ -411,13 +534,13 @@ public:
   }
 
   void send_arm_to_state_n(ros::Publisher & joint_trajectory_publisher, vector<std::vector<double>> joints_l, vector<double> t, vector<double> linear) {
-    // Create a message to send.
     trajectory_msgs::JointTrajectory msg;
 
     if(joint_trajectory_publisher == arm_1_joint_trajectory_publisher_)
       arm_1_joint_goal = *joints_l.rbegin(), arm_1_linear_goal = *linear.rbegin();
     else
       arm_2_joint_goal = *joints_l.rbegin(), arm_2_linear_goal = *linear.rbegin();
+    
     // Fill the names of the joints to be controlled.
     // Note that the vacuum_gripper_joint is not controllable.
     msg.joint_names.clear();
@@ -453,7 +576,36 @@ public:
     const osrf_gear::LogicalCameraImage::ConstPtr & image_msg)
   {
     ROS_INFO_STREAM_THROTTLE(10,
-      "Logical camera: '" << image_msg->models.size() << "' objects.");
+       "Logical camera: '" << image_msg->models.size() << "' objects.");
+    for(auto item: image_msg->models){
+      // cout << item.pose.position<<endl;    // x -> z , y->y, z -> -x
+      // cout << item.pose.orientation<<endl;
+      tf2::Quaternion tmp1(item.pose.orientation.x,item.pose.orientation.y,
+        item.pose.orientation.z, item.pose.orientation.w);
+      // tf2::Quaternion tmp2(image_msg->pose.orientation.x, image_msg->pose.orientation.y, 
+      //   image_msg->pose.orientation.z, image_msg->pose.orientation.w);
+      auto ori = tmp1*q_logical;
+      // auto & ori = item.pose.orientation;
+      double x = ori.x(), y= ori.y(), z = ori.z(), w = ori.w();
+      // cout<<x<<" "<<y<<" "<<z<<" "<<w<<endl;
+      //cout << atan2(2*(x*y + z*w), 1-2*(y*y+z*z))<<" ";
+      //cout << asin(2*(x*z-y*w))<<" ";
+      //cout << atan2(2*(x*w+y*z), 1-2*(z*z+w*w))<<" "<<endl;
+
+      if(item.pose.position.y > 0) {
+        divx_1 = - item.pose.position.x + 0.05;
+        divy_1 = - item.pose.position.y + 0.17;
+        theta_1 = 6.28318530718 - atan2(2*(x*w+y*z), 1-2*(z*z+w*w));
+        //if(theta_1>2*PI) theta_1 -= 2*PI;
+        type_1 = type2int(item.type);
+      }
+      else{
+        divx_2 = - item.pose.position.x - 0.05;
+        divy_2 = - item.pose.position.y - 0.17;
+        theta_2 = 6.28318530718 - atan2(2*(x*w+y*z), 1-2*(z*z+w*w));
+        type_2 = type2int(item.type);
+      }
+    }
     // int i = 0;
     // for(auto &item: image_msg->models){
     //   ROS_INFO_STREAM_THROTTLE(10+i,
@@ -462,20 +614,26 @@ public:
     // ROS_INFO_STREAM_THROTTLE(10,
     //   "\n");
   }
-
-  /// Called when a new Proximity message is received.
+  double divx_1=0, divy_1=0, theta_1=0;
+  double divx_2=0, divy_2=0, theta_2=0;
+  int type_1, type_2;
+  int type2int(string &type){
+    if(type[0]=='g'){
+      if(type[1]=='a') return 1;
+      return 2;
+    }
+    else if(type[0]=='d') return 3;
+    else{
+      if(type[1]=='i') return 4;
+      return 5;
+    }
+  }
   void break_beam_callback(const osrf_gear::Proximity::ConstPtr & msg) {
     if (msg->object_detected) {  // If there is an object in proximity.
       ROS_INFO("Break beam triggered.");
       event.emplace_back(ros::Time::now());
-      // if(idle)
-      //   {
-      //     send_arm_to_state(arm_1_joint_trajectory_publisher_, invkinematic(vector<double>{-0.92, 0.0, -0.07}), 6.5);
-      //     idle=false;
-      //   }
     }
   }
-  // bool idle;
 
   void to_agv1(double x, double y, double theta){
 
@@ -593,6 +751,8 @@ private:
 
   double arm_1_linear_goal, arm_2_linear_goal;
 
+  const tf2::Quaternion q_logical=tf2::Quaternion(0.0, -0.70707272301, 0.0, 0.707140837031);
+
   deque<ros::Time> event;
 
   const double maxBeltVel = 0.2;
@@ -616,6 +776,15 @@ private:
   const double arm_1_zero = 0.92;
   const double arm_2_zero = -0.92;
 
+  const double logical_camera_x = 0.8;
+  const double logical_camera_z = 1.15;
+
+  const vector<double> classify_pos_1=invkinematic(vector<double>{-0.55, 0.75, 0.45});
+  const vector<double> classify_pos_2=invkinematic(vector<double>{-0.55, -0.75, 0.45});
+
+  const vector<double> desk_hand_1=invkinematic(vector<double>{0.005, 0.92, 0.10});
+  const vector<double> desk_hand_2=invkinematic(vector<double>{0.005, -0.92, 0.10});
+
   ros::Publisher arm_1_joint_trajectory_publisher_;
   ros::Publisher arm_2_joint_trajectory_publisher_;
   
@@ -624,7 +793,8 @@ private:
   ros::ServiceClient agv_1;
   ros::ServiceClient agv_2;
 
-  std::vector<osrf_gear::Order> received_orders_;
+  // std::vector<osrf_gear::Order> received_orders_;
+  vector<Order> received_orders_; //order ,shipment, each part
   sensor_msgs::JointState arm_1_current_joint_states_;
   sensor_msgs::JointState arm_2_current_joint_states_;
   bool arm_1_has_been_zeroed_;
@@ -634,10 +804,13 @@ private:
   State arm_2_state;
 
   bool catched_1, catched_2;
+  int bin_num_1, bin_num_2; // 0: belt 1-6, bins
 
   bool enabled_1, enabled_2;
 
   bool fum_1_init, fum_2_init;
+
+  vector<int> bin_type;
 
 };
 

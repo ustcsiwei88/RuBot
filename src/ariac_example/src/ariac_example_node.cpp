@@ -89,16 +89,16 @@ void start_competition(ros::NodeHandle & node) {
   }
 }
 // %EndTag(START_COMP)%
-class Order{
+class Shipment{
 public:
   int priority;
   int agv;
   vector<pair<double,double>> position;
   vector<double> theta;
-  vectir<double> obj_t;
+  vector<int> obj_t;
   vector<bool> finished;
-  vector<bool> shipment_t;
-  Order(int priority=100):priority(priority){
+  string shipment_t;
+  Shipment(int priority=100):priority(priority){
   }
 };
 /// Example class that can hold state and provide methods that handle incoming data.
@@ -169,26 +169,50 @@ public:
     competition_state_ = msg->data;
   }
 
+  vector<Shipment> shipments_1, shipments_2;
 
+  int bin_t2int(string s){
+    if(s[1]=='n') return shipments_1.size()<shipments_2.size()? 1:2;
+    if(s[3]=='1') return 1;
+    return 2;
+  }
   /// Called when a new Order message is received.
   void order_callback(const osrf_gear::Order::ConstPtr & order_msg) {
     //ROS_INFO_STREAM("Received order:\n" << *order_msg);
     // Order tmp;
-    received_orders_.resize(received_orders_.size()+1);
-    Order & tmp = received_orders_[received_orders_.size()-1];
-    for(auto & item:order_msg->shipment){
-      tmp.shipment_t.push_back(item.shipment_type);
-      tmp.agv = 1;
-      for(auto & item2: item.products){
-        tmp.obj_t.push_back(type2int(item2.type));
-        tmp.position.emplace_back(item2.position.x, item2.position.y);
+    //received_orders_.resize(received_orders_.size()+1);
+    // Order * tmp;
+    // if(order_msg->shipments->agv_id == string("any")){
+    //   if(shipments_1.size()<shipments_2.size()){
+    //     tmp = &
+    //   }
+    // }
+    // Order & tmp = received_orders_[received_orders_.size()-1];
+    for(auto & item:order_msg->shipments){
+      Shipment *tmp;
+      int n = bin_t2int(item.agv_id);
+      if(n==1) {
+        shipments_1.resize(shipments_1.size()+1);
+        tmp = &shipments_1[shipments_1.size()-1];
+      }
+      else{
+        shipments_2.resize(shipments_2.size()+1);
+        tmp = &shipments_2[shipments_2.size()-1];
+      }
+      tmp->shipment_t=(item.shipment_type);
+      tmp->agv = 1;
+      for(auto & item1: item.products){
+        tmp->obj_t.push_back(type2int(item1.type));
+        auto & item2=item1.pose;
+        tmp->position.emplace_back(item2.position.x, item2.position.y);
         double x,y,z,w;
         x = item2.orientation.x;
         y = item2.orientation.y;
         z = item2.orientation.z;
         w = item2.orientation.w;
-        tmp.theta.push_back(atan2(2*(x*w+y*z), 1-2*(z*z+w*w)));
+        tmp->theta.push_back(atan2(2*(x*w+y*z), 1-2*(z*z+w*w)));
       }
+
     }
     // for(auto &: order_msg->shipment)
     // received_orders_.push_back(*order_msg);
@@ -200,7 +224,7 @@ public:
   //transfer
 
   // 50 HZ
-  /// Called when a new JointState message is received.
+  /// Called when a new JointState message is received.hip
   void arm_1_joint_state_callback(
     const sensor_msgs::JointState::ConstPtr & joint_state_msg)
   {
@@ -219,7 +243,7 @@ public:
     //cout<<arm_1_linear<<"-----"<<endl;
     switch(arm_1_state){
       case IDLE:
-        send_arm_to_state( arm_1_joint_trajectory_publisher_, desk_hand_1, 0.3, 0);break;
+        send_arm_to_state( arm_1_joint_trajectory_publisher_, invkinematic(vector<double>{0.0,-1.05, -0.1}), 0.3, 1.18);break;
         if(bin_type[4]<0){
           bin_num_1 = 4;
           arm_1_state = FUMBLE;
@@ -282,7 +306,8 @@ public:
           start[2]+=0.27;
 
           send_arm_to_state_n(arm_1_joint_trajectory_publisher_, vector<vector<double>>{invkinematic(start), 
-            invkinematic(vector<double>{0.0, -0.9, 0.1}), invkinematic(vector<double>{0.0,-0.9, -0.1})}, vector<double>{0.2, 1.1, 1.5}, vector<double>{arm_1_linear , 1.18, 1.18});
+            invkinematic(vector<double>{0.0, -1.2, 0.1}), invkinematic(vector<double>{0.0,-1.2, -0.1})}, 
+            vector<double>{0.2, 1.2, 1.5}, vector<double>{arm_1_linear , 1.18, 1.18});
         }
         break;
       case TRANSFER:
@@ -617,7 +642,7 @@ public:
   double divx_1=0, divy_1=0, theta_1=0;
   double divx_2=0, divy_2=0, theta_2=0;
   int type_1, type_2;
-  int type2int(string &type){
+  int type2int(const string &type){
     if(type[0]=='g'){
       if(type[1]=='a') return 1;
       return 2;
@@ -782,8 +807,14 @@ private:
   const vector<double> classify_pos_1=invkinematic(vector<double>{-0.55, 0.75, 0.45});
   const vector<double> classify_pos_2=invkinematic(vector<double>{-0.55, -0.75, 0.45});
 
-  const vector<double> desk_hand_1=invkinematic(vector<double>{0.005, 0.92, 0.10});
-  const vector<double> desk_hand_2=invkinematic(vector<double>{0.005, -0.92, 0.10});
+  const vector<double> desk_hand_1_1 = invkinematic(vector<double>{0.005, 0.92, 0.10});
+  const vector<double> desk_hand_1_2 = invkinematic(vector<double>{0.005, 0.92, 0.0});
+  const vector<double> desk_hand_1_3 = invkinematic(vector<double>{0.005, 0.72, 0.10});
+
+
+  const vector<double> desk_hand_2_1=invkinematic(vector<double>{0.005, -0.92, 0.10});
+  const vector<double> desk_hand_2_2=invkinematic(vector<double>{0.005, -0.92, 0.0});
+  const vector<double> desk_hand_2_3=invkinematic(vector<double>{0.005, -0.72, 0.10});
 
   ros::Publisher arm_1_joint_trajectory_publisher_;
   ros::Publisher arm_2_joint_trajectory_publisher_;
@@ -794,7 +825,7 @@ private:
   ros::ServiceClient agv_2;
 
   // std::vector<osrf_gear::Order> received_orders_;
-  vector<Order> received_orders_; //order ,shipment, each part
+  // vector<Order> received_orders_; //order ,shipment, each part
   sensor_msgs::JointState arm_1_current_joint_states_;
   sensor_msgs::JointState arm_2_current_joint_states_;
   bool arm_1_has_been_zeroed_;

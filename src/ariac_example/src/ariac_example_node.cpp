@@ -147,10 +147,10 @@ public:
 
     
 
-    for(auto i: classify_pos_2) cout<<i<<" ";
-      cout<<endl;
-    for(auto i: classify2bpos_2) cout<<i<<" ";
-      cout<<endl;
+    // for(auto i: classify_pos_2) cout<<i<<" ";
+    //   cout<<endl;
+    // for(auto i: classify2bpos_2) cout<<i<<" ";
+    //   cout<<endl;
     
   }
 
@@ -207,6 +207,7 @@ public:
         tmp->agv = 2;
       }
       tmp->shipment_t=(item.shipment_type);
+      
       for(auto & item1: item.products){
         // cout<<item1.type<<" "<<type2int(item1.type)<<endl;
         tmp->obj_t.push_back(type2int(item1.type));
@@ -233,6 +234,7 @@ public:
 
   int des_1=-1, des_2=-1;
 
+  int ship_id_1, ship_id_2;
   // 50 HZ
   /// Called when a new JointState message is received.hip
   void arm_1_joint_state_callback(
@@ -377,6 +379,9 @@ public:
                   x_r_1 = divx_1;
                   y_d_1 = shipments_1[0].position[i].second;
                   y_r_1 = divy_1;
+
+                  ship_id_1 = i;
+
                   break;
                 }
               }
@@ -415,7 +420,7 @@ public:
                 classify2bpos_1, 
                 invkinematic(vector<double>{0.001+ /*x_r_1 - */x_d_1*3/4, -1.1+/*y_r_1-*/y_d_1*3/4, 0.1}), 
                 invkinematic(vector<double>{0.001+ /*x_r_1 - */x_d_1*3/4, -1.1+/*y_r_1-*/y_d_1*3/4 -0.05})}, 
-              vector<double>{0.5, 1.0, 1.5}, vector<double>{0.5 , 1.18, 1.18});
+              vector<double>{1,2,3}, vector<double>{0.5 , 1.18, 1.18});
             arm_1_state = TRANSFER;
           }
           else if(des_1==2){
@@ -487,8 +492,10 @@ public:
           arm_1_state = IDLE;
           // send_arm_to_state(arm_2_joint_trajectory_publisher_, rest_joints, 
           //   0.5, 0);
-
-          send_arm_to_zero_state(arm_2_joint_trajectory_publisher_);
+          if(des_1 == 1){
+            shipments_1[0].finished[ship_id_1]=true;
+          }
+          // send_arm_to_zero_state(arm_2_joint_trajectory_publisher_);
         }
         break;
     }
@@ -755,6 +762,8 @@ public:
                   x_r_2 = divx_2;
                   y_d_2 = shipments_2[0].position[i].second;
                   y_r_2 = divy_2;
+
+                  ship_id_2 = i;
                   break;
                 }
               }
@@ -767,7 +776,6 @@ public:
                   arm_2_state = TRANSIT;
                   des_2 = 2;
                   count_2 = 0;
-
                   break;
                 }
               }
@@ -800,7 +808,7 @@ public:
                 classify2bpos_2, 
                 invkinematic(vector<double>{0.001+/*x_r_2-*/x_d_2*3/4, 1.1+/*y_r_2-*/y_d_2*3/4, 0.1}), 
                 invkinematic(vector<double>{0.001+/*x_r_2-*/x_d_2*3/4, 1.1+/*y_r_2-*/y_d_2*3/4, -0.05})}, 
-              vector<double>{0.5, 1.0, 1.5}, vector<double>{-0.5 , -1.18, -1.18});
+              vector<double>{1, 2, 3}, vector<double>{-0.5 , -1.18, -1.18});
             arm_2_state=TRANSFER;
           }
           else if(des_2==2){
@@ -823,7 +831,7 @@ public:
             for(i=1;i<7;i++){
               if(bin_type[i]==type_2) break;
             }
-            cout<<i<<endl;
+            // cout<<i<<endl;
             if(i==7){
               for(i=1;i<7;i++){
                 if(bin_type[i]==0) break;
@@ -871,10 +879,14 @@ public:
         if(reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear - arm_2_linear_goal) <= 4e-3){
           close_gripper(2);
           arm_2_state = IDLE;
+          if(des_2 == 1){
+            shipments_2[0].finished[ship_id_2]=true;
+          }
           // send_arm_to_state(arm_2_joint_trajectory_publisher_, rest_joints, 
           //   0.5, 0);
         }
         break;
+
     }
 
     if (!arm_2_has_been_zeroed_) {
@@ -986,7 +998,7 @@ public:
     }
     msg.points[1].positions[6] = linear;
 
-    cout<<"got here"<<endl;
+    // cout<<"got here"<<endl;
     // How long to take getting to the point (floating point seconds).
     msg.points[0].time_from_start = ros::Duration(ros::Duration(t).toSec()*3/4);
     msg.points[1].time_from_start = ros::Duration(t);
@@ -1377,8 +1389,8 @@ int main(int argc, char ** argv) {
 
   // %Tag(SUB_FUNC)%
   // Subscribe to the '/ariac/proximity_sensor_1' topic.
-  ros::Subscriber proximity_sensor_subscriber = node.subscribe(
-    "/ariac/proximity_sensor_1", 10, proximity_sensor_callback);
+  // ros::Subscriber proximity_sensor_subscriber = node.subscribe(
+  //   "/ariac/proximity_sensor_1", 10, proximity_sensor_callback);
   // %EndTag(SUB_FUNC)%
 
   // Subscribe to the '/ariac/break_beam_1_change' topic.

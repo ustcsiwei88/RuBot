@@ -302,6 +302,7 @@ public:
               if(bin_type[j]==item){
                 bin_num_1=j;
                 arm_1_state=FUMBLE;
+                dx_1=-1;
                 goto e1;
               }
             }
@@ -315,6 +316,7 @@ public:
               if(bin_type[j]==item){
                 bin_num_1=j;
                 arm_1_state=FUMBLE;
+                dx_1=-1;
                 goto e1;
               }
             }
@@ -341,12 +343,12 @@ public:
           dx_1 = -1;
           dir_1= true;fum_1_init=true;
           auto tmp = kinematic(arm_1_joint);
-          tmp[2] += 0.4;
+          tmp[2] += 0.3;
           send_arm_to_state(arm_1_joint_trajectory_publisher_,
-            invkinematic(tmp),0.2,arm_1_linear);
-          if(bin_type[bin_num_1]<0){
+            invkinematic(tmp),0.4,arm_1_linear);
+          // if(bin_type[bin_num_1]<0){
             arm_1_state = CLASSIFY;
-          }
+          // }
         }
         if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3){
           open_gripper(1);
@@ -411,8 +413,8 @@ public:
             send_arm_to_state_n(arm_1_joint_trajectory_publisher_, 
               vector<vector<double>>{
                 classify2bpos_1, 
-                invkinematic(vector<double>{0.001+ /*x_r_1 - */x_d_1, -1.1+/*y_r_1-*/y_d_1, 0.1}), 
-                invkinematic(vector<double>{0.001+ /*x_r_1 - */x_d_1, -1.1+/*y_r_1-*/y_d_1 -0.05})}, 
+                invkinematic(vector<double>{0.001+ /*x_r_1 - */x_d_1*3/4, -1.1+/*y_r_1-*/y_d_1*3/4, 0.1}), 
+                invkinematic(vector<double>{0.001+ /*x_r_1 - */x_d_1*3/4, -1.1+/*y_r_1-*/y_d_1*3/4 -0.05})}, 
               vector<double>{0.5, 1.0, 1.5}, vector<double>{0.5 , 1.18, 1.18});
             arm_1_state = TRANSFER;
           }
@@ -659,6 +661,7 @@ public:
               if(bin_type[j]==item){
                 bin_num_2=j;
                 arm_2_state=FUMBLE;
+                dx_2=-1;
                 goto e2;
               }
             }
@@ -672,6 +675,7 @@ public:
               if(bin_type[j]==item){
                 bin_num_2 = j;
                 arm_2_state=FUMBLE;
+                dx_2=-1;
                 goto e2;
               }
             }
@@ -713,12 +717,12 @@ public:
           dx_2 = -1;
           dir_2= true;fum_2_init=true;
           auto tmp = kinematic(arm_2_joint);
-          tmp[2] += 0.4;
+          tmp[2] += 0.3;
           send_arm_to_state(arm_2_joint_trajectory_publisher_,
-            invkinematic(tmp),0.2,arm_2_linear);
-          if(bin_type[bin_num_2]<0){
+            invkinematic(tmp),0.4,arm_2_linear);
+          // if(bin_type[bin_num_2]<0){
             arm_2_state = CLASSIFY;
-          }
+          // }
         }
         if(reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear - arm_2_linear_goal) <= 4e-3){
           open_gripper(2);
@@ -794,8 +798,8 @@ public:
             send_arm_to_state_n(arm_2_joint_trajectory_publisher_, 
               vector<vector<double>>{
                 classify2bpos_2, 
-                invkinematic(vector<double>{0.001+/*x_r_2-*/x_d_2, 1.1+/*y_r_2-*/y_d_2, 0.2}), 
-                invkinematic(vector<double>{0.001+/*x_r_2-*/x_d_2, 1.1+/*y_r_2-*/y_d_2, -0.05})}, 
+                invkinematic(vector<double>{0.001+/*x_r_2-*/x_d_2*3/4, 1.1+/*y_r_2-*/y_d_2*3/4, 0.1}), 
+                invkinematic(vector<double>{0.001+/*x_r_2-*/x_d_2*3/4, 1.1+/*y_r_2-*/y_d_2*3/4, -0.05})}, 
               vector<double>{0.5, 1.0, 1.5}, vector<double>{-0.5 , -1.18, -1.18});
             arm_2_state=TRANSFER;
           }
@@ -1040,7 +1044,8 @@ public:
     // }
 
     // How long to take getting to the point (floating point seconds).
-    // ROS_INFO_STREAM("Sending command:\n" << msg);
+    // if(joint_trajectory_publisher == arm_2_joint_trajectory_publisher_) 
+    //   ROS_INFO_STREAM("Sending command:\n" << msg);
     joint_trajectory_publisher.publish(msg);
   }
   // %EndTag(ARM_ZERO)%

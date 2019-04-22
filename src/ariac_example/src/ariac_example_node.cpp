@@ -177,7 +177,7 @@ public:
   vector<Shipment> shipments_1, shipments_2;
 
   int bin_t2int(string s){
-    if(s[1]=='n') return shipments_1.size()>shipments_2.size()? 2:1;
+    if(s[1]=='n') return shipments_1.size()<shipments_2.size()? 1:2;
     if(s[3]=='1') return 1;
     return 2;
   }
@@ -1284,15 +1284,15 @@ private:
   const vector<double> classify2bpos_1=invkinematic(vector<double>{0.45, 0.45, 0.47});
   const vector<double> classify2bpos_2=invkinematic(vector<double>{0.45, -0.45, 0.47});
 
-  const vector<double> desk_hand_1_1 = invkinematic(vector<double>{-0.001, 0.92, 0.10});
-  const vector<double> desk_hand_1_2 = invkinematic(vector<double>{-0.001, 0.92, 0.04});
-  const vector<double> desk_hand_1_3 = invkinematic(vector<double>{-0.001, 0.82, 0.30});
-  const vector<double> desk_hand_1_4 = invkinematic(vector<double>{-0.001, 0.92, -0.04});
+  const vector<double> desk_hand_1_1 = invkinematic(vector<double>{-0.005, 0.92, 0.10});
+  const vector<double> desk_hand_1_2 = invkinematic(vector<double>{-0.005, 0.92, 0.04});
+  const vector<double> desk_hand_1_3 = invkinematic(vector<double>{-0.005, 0.82, 0.30});
+  const vector<double> desk_hand_1_4 = invkinematic(vector<double>{-0.005, 0.92, -0.04});
 
-  const vector<double> desk_hand_1_5 = invkinematic(vector<double>{-0.001, 0.94, 0.1});
-  const vector<double> desk_hand_1_6 = invkinematic(vector<double>{-0.001, 0.94, -0.04});
-  const vector<double> desk_hand_1_7 = invkinematic(vector<double>{-0.001, 0.90, 0.1});
-  const vector<double> desk_hand_1_8 = invkinematic(vector<double>{-0.001, 0.90, -0.04});
+  const vector<double> desk_hand_1_5 = invkinematic(vector<double>{-0.005, 0.94, 0.1});
+  const vector<double> desk_hand_1_6 = invkinematic(vector<double>{-0.005, 0.94, -0.04});
+  const vector<double> desk_hand_1_7 = invkinematic(vector<double>{-0.005, 0.90, 0.1});
+  const vector<double> desk_hand_1_8 = invkinematic(vector<double>{-0.005, 0.90, -0.04});
 
   
 

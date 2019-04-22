@@ -354,6 +354,11 @@ public:
         }
         if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3){
           open_gripper(1);
+          if(!event.empty()){
+            send_arm_to_state( arm_1_joint_trajectory_publisher_, rest_joints, 0.3, -0.3);
+            arm_1_state = IDLE;
+            break;
+          }
           if(!fumble(bin_num_1)){
             bin_type[bin_num_1]=0; //empty
             arm_1_state=IDLE;

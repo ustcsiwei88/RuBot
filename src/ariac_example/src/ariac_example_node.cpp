@@ -424,7 +424,7 @@ public:
               vector<vector<double>>{
                 classify2bpos_1, 
                 invkinematic(vector<double>{0.001+ /*x_r_1 - */x_d_1*3/4, -1.1+/*y_r_1-*/y_d_1*3/4, 0.1}), 
-                invkinematic(vector<double>{0.001+ /*x_r_1 - */x_d_1*3/4, -1.1+/*y_r_1-*/y_d_1*3/4 -0.05})}, 
+                invkinematic(vector<double>{0.001+ /*x_r_1 - */x_d_1*3/4, -1.1+/*y_r_1-*/y_d_1*3/4, -0.05})}, 
               vector<double>{1,2,3}, vector<double>{0.5 , 1.18, 1.18});
             arm_1_state = TRANSFER;
           }

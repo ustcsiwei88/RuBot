@@ -252,6 +252,12 @@ public:
     arm_1_joint[4] = arm_1_current_joint_states_.position[5]; //wrist2
     arm_1_joint[5] = arm_1_current_joint_states_.position[6]; //wrist3
     arm_1_linear = arm_1_current_joint_states_.position[1]; //linear
+    if (!arm_1_has_been_zeroed_) {
+      arm_1_has_been_zeroed_ = true;
+      ROS_INFO("Sending arm to zero joint positions...");
+      send_arm_to_zero_state(arm_1_joint_trajectory_publisher_);
+      return;
+    }
     if(shipments_1.size()>0){
       bool f = true;
       for(bool i: shipments_1[0].finished){
@@ -505,11 +511,7 @@ public:
         break;
     }
 
-    if (!arm_1_has_been_zeroed_) {
-      arm_1_has_been_zeroed_ = true;
-      ROS_INFO("Sending arm to zero joint positions...");
-      send_arm_to_zero_state(arm_1_joint_trajectory_publisher_);
-    }
+
   }
 
   double dx_1 = -1;
@@ -625,6 +627,13 @@ public:
     arm_2_joint[4] = arm_2_current_joint_states_.position[5]; //wrist2
     arm_2_joint[5] = arm_2_current_joint_states_.position[6]; //wrist3
     arm_2_linear = arm_2_current_joint_states_.position[1]; //linear
+
+    if (!arm_2_has_been_zeroed_) {
+      arm_2_has_been_zeroed_ = true;
+      ROS_INFO("Sending arm 2 to zero joint positions...");
+      send_arm_to_zero_state(arm_2_joint_trajectory_publisher_);
+      return;
+    }
 
     // cout<<arm_2_state<<"---"<<endl;
     // for(double ii: arm_2_joint) cout<< ii<<" ";
@@ -895,11 +904,7 @@ public:
 
     }
 
-    if (!arm_2_has_been_zeroed_) {
-      arm_2_has_been_zeroed_ = true;
-      ROS_INFO("Sending arm 2 to zero joint positions...");
-      send_arm_to_zero_state(arm_2_joint_trajectory_publisher_);
-    }
+
   }
   // %EndTag(CB_CLASS)%
 
@@ -923,12 +928,13 @@ public:
     msg.points.resize(1);
     // Resize the vector to the same length as the joint names.
     // Values are initialized to 0.
-    msg.points[0].positions.resize(msg.joint_names.size(), 0.0);
-
+    // msg.points[0].positions.resize(msg.joint_names.size(), 0.0);
+    msg.points[0].positions = rest_joints;
+    msg.points[0].positions.push_back(0);
     if(joint_trajectory_publisher == arm_1_joint_trajectory_publisher_)
-      {arm_1_linear_goal = 1.0, arm_1_joint_goal.resize(6,0), close_gripper(1);msg.points[0].positions[6]=1.0;}
+      {arm_1_linear_goal = 1.0, arm_1_joint_goal=rest_joints, close_gripper(1);msg.points[0].positions[6]=1.0;}
     else
-      {arm_2_linear_goal = -1.0, arm_2_joint_goal.resize(6,0), close_gripper(2);msg.points[0].positions[6]=-1.0;}
+      {arm_2_linear_goal = -1.0, arm_2_joint_goal=rest_joints, close_gripper(2);msg.points[0].positions[6]=-1.0;}
     // How long to take getting to the point (floating point seconds).
     msg.points[0].time_from_start = ros::Duration(0.5);
     // ROS_INFO_STREAM("Sending command:\n" << msg);
@@ -1324,8 +1330,8 @@ private:
   // vector<Order> received_orders_; //order ,shipment, each part
   sensor_msgs::JointState arm_1_current_joint_states_;
   sensor_msgs::JointState arm_2_current_joint_states_;
-  bool arm_1_has_been_zeroed_;
-  bool arm_2_has_been_zeroed_;
+  bool arm_1_has_been_zeroed_=false;
+  bool arm_2_has_been_zeroed_=false;
 
   State arm_1_state;
   State arm_2_state;

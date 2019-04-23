@@ -278,8 +278,10 @@ public:
           open_gripper(1);
           if(count_1==0){
             send_arm_to_state_n(arm_1_joint_trajectory_publisher_, vector<vector<double>>{
-              desk_hand_1_1, desk_hand_1_4, desk_hand_1_5, desk_hand_1_6, desk_hand_1_7, desk_hand_1_8
-            }, vector<double>{0.5,1.0, 1.3, 1.6, 1.9, 2.2}, vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+              desk_hand_1_1, desk_hand_1_4, desk_hand_1_5, desk_hand_1_6, desk_hand_1_7, desk_hand_1_8,
+              desk_hand_1_9, desk_hand_1_10, desk_hand_1_11, desk_hand_1_12
+            }, vector<double>{0.5,1.0, 1.3, 1.6, 1.9, 2.2, 2.5, 2.8, 3.1, 3.4}, 
+            vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
             count_1++;
           }
           else{
@@ -433,8 +435,8 @@ public:
             send_arm_to_state_n(arm_1_joint_trajectory_publisher_, 
               vector<vector<double>>{
                 classify2bpos_1, 
-                invkinematic(vector<double>{0.001+ /*x_r_1 - */x_d_1*3/4, -1.1+/*y_r_1-*/y_d_1*3/4, 0.1}), 
-                invkinematic(vector<double>{0.001+ /*x_r_1 - */x_d_1*3/4, -1.1+/*y_r_1-*/y_d_1*3/4, -0.05})}, 
+                invkinematic(vector<double>{0.001+ /*x_r_1 - */x_d_1*3/4, -1.1+/*y_r_1-*/y_d_1*3/4, 0.2}), 
+                invkinematic(vector<double>{0.001+ /*x_r_1 - */x_d_1*3/4, -1.1+/*y_r_1-*/y_d_1*3/4, 0.0})}, 
               vector<double>{1,2,3}, vector<double>{0.5 , 1.18, 1.18});
             arm_1_state = TRANSFER;
           }
@@ -579,9 +581,9 @@ public:
     if(bin_num>=3){
       vector<double> p1;
       if(fum_1_init)p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9 + 0.7});
-      else p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.1});
+      else p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.13});
       auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9-0.015});
-      auto p3 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.13});
+      auto p3 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.16});
       // auto res = kinematic(p1);
       //auto p1 = invkinematic(vector<double>{-x+dx, dy, z+0.05});
       if(fum_1_init)
@@ -598,9 +600,9 @@ public:
     else{
       vector<double> p1;
       if(fum_2_init)p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9 + 0.7});
-      else p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.1});
+      else p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.13});
       auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9-0.01});
-      auto p3 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.13});
+      auto p3 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.16});
       // auto res = kinematic(p1);
       //auto p1 = invkinematic(vector<double>{-x+dx, dy, z+0.05});
       if(fum_2_init)
@@ -677,8 +679,10 @@ public:
           // cout<<"fetching from shelf"<<endl;
           if(count_2==0){
             send_arm_to_state_n(arm_2_joint_trajectory_publisher_, vector<vector<double>>{
-              desk_hand_2_1, desk_hand_2_4, desk_hand_2_5, desk_hand_2_6, desk_hand_2_7, desk_hand_2_8
-            }, vector<double>{0.5,1.0, 1.3, 1.6, 1.9, 2.2}, vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+              desk_hand_2_1, desk_hand_2_4, desk_hand_2_5, desk_hand_2_6, desk_hand_2_7, desk_hand_2_8,
+              desk_hand_2_9, desk_hand_2_10, desk_hand_2_11, desk_hand_2_12
+            }, vector<double>{0.5,1.0, 1.3, 1.6, 1.9, 2.2, 2.5, 2.8, 3.1, 3.4}, 
+            vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
             count_2++;
           }
           else{
@@ -838,8 +842,8 @@ public:
             send_arm_to_state_n(arm_2_joint_trajectory_publisher_, 
               vector<vector<double>>{
                 classify2bpos_2, 
-                invkinematic(vector<double>{0.001+/*x_r_2-*/x_d_2*3/4, 1.1+/*y_r_2-*/y_d_2*3/4, 0.1}), 
-                invkinematic(vector<double>{0.001+/*x_r_2-*/x_d_2*3/4, 1.1+/*y_r_2-*/y_d_2*3/4, -0.05})}, 
+                invkinematic(vector<double>{0.001+/*x_r_2-*/x_d_2*3/4, 1.1+/*y_r_2-*/y_d_2*3/4, 0.2}), 
+                invkinematic(vector<double>{0.001+/*x_r_2-*/x_d_2*3/4, 1.1+/*y_r_2-*/y_d_2*3/4, 0.0})}, 
               vector<double>{1, 2, 3}, vector<double>{-0.5 , -1.18, -1.18});
             arm_2_state=TRANSFER;
           }
@@ -1345,27 +1349,38 @@ private:
   const vector<double> classify2bpos_1=invkinematic(vector<double>{0.45, 0.45, 0.47});
   const vector<double> classify2bpos_2=invkinematic(vector<double>{0.45, -0.45, 0.47});
 
-  const vector<double> desk_hand_1_1 = invkinematic(vector<double>{-0.005, 0.92, 0.10});
-  const vector<double> desk_hand_1_2 = invkinematic(vector<double>{-0.005, 0.92, 0.04});
-  const vector<double> desk_hand_1_3 = invkinematic(vector<double>{-0.005, 0.82, 0.30});
-  const vector<double> desk_hand_1_4 = invkinematic(vector<double>{-0.005, 0.92, -0.04});
+  const vector<double> desk_hand_1_1 = invkinematic(vector<double>{-0.02, 0.92, 0.13});
+  // const vector<double> desk_hand_1_2 = invkinematic(vector<double>{-0.02, 0.92, 0.075});
+  const vector<double> desk_hand_1_2 = invkinematic(vector<double>{-0.02, 0.92, 0.1});
+  const vector<double> desk_hand_1_3 = invkinematic(vector<double>{-0.02, 0.72, 0.30});
+  const vector<double> desk_hand_1_4 = invkinematic(vector<double>{-0.02, 0.92, -0.04});
 
-  const vector<double> desk_hand_1_5 = invkinematic(vector<double>{-0.005, 0.94, 0.1});
-  const vector<double> desk_hand_1_6 = invkinematic(vector<double>{-0.005, 0.94, -0.04});
-  const vector<double> desk_hand_1_7 = invkinematic(vector<double>{-0.005, 0.90, 0.1});
-  const vector<double> desk_hand_1_8 = invkinematic(vector<double>{-0.005, 0.90, -0.04});
+  const vector<double> desk_hand_1_5 = invkinematic(vector<double>{-0.02, 0.95, 0.1});
+  const vector<double> desk_hand_1_6 = invkinematic(vector<double>{-0.02, 0.95, -0.04});
+  const vector<double> desk_hand_1_7 = invkinematic(vector<double>{-0.02, 0.89, 0.1});
+  const vector<double> desk_hand_1_8 = invkinematic(vector<double>{-0.02, 0.89, -0.04});
+
+  const vector<double> desk_hand_1_9=invkinematic(vector<double>{-0.001, 0.92, 0.1});
+  const vector<double> desk_hand_1_10=invkinematic(vector<double>{-0.001, 0.92, -0.04});
+  const vector<double> desk_hand_1_11=invkinematic(vector<double>{-0.0399, 0.92, 0.1});
+  const vector<double> desk_hand_1_12=invkinematic(vector<double>{-0.0399, 0.92, -0.04});
 
   
 
-  const vector<double> desk_hand_2_1=invkinematic(vector<double>{-0.005, -0.92, 0.10});
-  const vector<double> desk_hand_2_2=invkinematic(vector<double>{-0.005, -0.92, 0.04});
-  const vector<double> desk_hand_2_3=invkinematic(vector<double>{-0.005, -0.82, 0.30});
-  const vector<double> desk_hand_2_4=invkinematic(vector<double>{-0.005, -0.92, -0.04});
+  const vector<double> desk_hand_2_1=invkinematic(vector<double>{-0.02, -0.92, 0.13});
+  const vector<double> desk_hand_2_2=invkinematic(vector<double>{-0.02, -0.92, 0.1});
+  const vector<double> desk_hand_2_3=invkinematic(vector<double>{-0.02, -0.72, 0.30});
+  const vector<double> desk_hand_2_4=invkinematic(vector<double>{-0.02, -0.92, -0.04});
 
-  const vector<double> desk_hand_2_5=invkinematic(vector<double>{-0.005, -0.94, 0.1});
-  const vector<double> desk_hand_2_6=invkinematic(vector<double>{-0.005, -0.94, -0.04});
-  const vector<double> desk_hand_2_7=invkinematic(vector<double>{-0.005, -0.90, 0.1});
-  const vector<double> desk_hand_2_8=invkinematic(vector<double>{-0.005, -0.90, -0.04});
+  const vector<double> desk_hand_2_5=invkinematic(vector<double>{-0.02, -0.95, 0.1});
+  const vector<double> desk_hand_2_6=invkinematic(vector<double>{-0.02, -0.95, -0.04});
+  const vector<double> desk_hand_2_7=invkinematic(vector<double>{-0.02, -0.89, 0.1});
+  const vector<double> desk_hand_2_8=invkinematic(vector<double>{-0.02, -0.89, -0.04});
+  
+  const vector<double> desk_hand_2_9=invkinematic(vector<double>{-0.001, -0.92, 0.1});
+  const vector<double> desk_hand_2_10=invkinematic(vector<double>{-0.001, -0.92, -0.04});
+  const vector<double> desk_hand_2_11=invkinematic(vector<double>{-0.0399, -0.92, 0.1});
+  const vector<double> desk_hand_2_12=invkinematic(vector<double>{-0.0399, -0.92, -0.04});
   
   double x_r_1, y_r_1;
   double x_d_1, y_d_1;

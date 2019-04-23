@@ -145,7 +145,8 @@ public:
 
     bin_type.resize(7,-1);    // -1 unknown, 0 empty, 1 disk, 2 gasket, 3 gear, 4 piston_rod, 5 pulley_part
 
-    
+    agv1_state = false;
+    agv2_state = false;
 
     // for(auto i: classify_pos_2) cout<<i<<" ";
     //   cout<<endl;
@@ -183,7 +184,7 @@ public:
   }
   /// Called when a new Order message is received.
   void order_callback(const osrf_gear::Order::ConstPtr & order_msg) {
-    //ROS_INFO_STREAM("Received order:\n" << *order_msg);
+    ROS_INFO_STREAM("Received order:\n" << *order_msg);
     // Order tmp;
     //received_orders_.resize(received_orders_.size()+1);
     // Order * tmp;
@@ -258,12 +259,15 @@ public:
       send_arm_to_zero_state(arm_1_joint_trajectory_publisher_);
       return;
     }
-    if(shipments_1.size()>0){
+    if(shipments_1.size()>0 && !agv1_state){
       bool f = true;
       for(bool i: shipments_1[0].finished){
         if(!i){f=false;break;}
       }
-      if(f) {agv(1, shipments_1[0].shipment_t);shipments_1.erase(shipments_1.begin());}
+      if(f) {
+        agv(1, shipments_1[0].shipment_t);
+        // shipments_1.erase(shipments_1.begin());
+      }
     }
     switch(arm_1_state){
       case IDLE:
@@ -503,8 +507,18 @@ public:
           arm_1_state = IDLE;
           // send_arm_to_state(arm_2_joint_trajectory_publisher_, rest_joints, 
           //   0.5, 0);
+
+          //wait 0.2 sec to drop
           if(des_1 == 1){
-            shipments_1[0].finished[ship_id_1]=true;
+            if(count_1 == 10){
+              shipments_1[0].finished[ship_id_1]=true;
+              count_1=0;
+              arm_1_state = IDLE;
+            }
+            else{
+              count_1++;
+              arm_1_state = TRANSFER;
+            }
           }
           // send_arm_to_zero_state(arm_2_joint_trajectory_publisher_);
         }
@@ -529,7 +543,7 @@ public:
     double y = bin_y[bin_num];
     double x = -0.4;
     double z = 0.64;
-    cout<<"fumbling No."<<bin_num<<endl;
+    // cout<<"fumbling No."<<bin_num<<endl;
     double dx,dy;
     bool dir;
     if(bin_num>=3){
@@ -640,16 +654,19 @@ public:
     //       cout<<endl;
     //     for(double ii: arm_2_joint_goal) cout<< ii<<" ";
     //       cout<<endl;
-    if(shipments_2.size()>0){
+    if(shipments_2.size()>0 && !agv2_state){
       bool f = true;
       for(bool i: shipments_2[0].finished){
         if(!i){f=false;break;}
       }
-      if(f) {agv(2,shipments_2[0].shipment_t);shipments_2.erase(shipments_2.begin());}
+      if(f) {
+        agv(2,shipments_2[0].shipment_t);
+        // shipments_2.erase(shipments_2.begin());
+      }
     }
     switch(arm_2_state){
       case IDLE:
-        cout<<"arm 2 idling"<<endl;
+        // cout<<"arm 2 idling"<<endl;
         // send_arm_to_state( arm_2_joint_trajectory_publisher_, invkinematic(vector<double>{0.001, 1.05, -0.1}), 0.3, -1.18);break;
         if(count_2==0 && (!reached(arm_2_joint, arm_2_joint_goal) || fabs(arm_2_linear - arm_2_linear_goal) > 4e-3))
           break;
@@ -895,7 +912,15 @@ public:
           close_gripper(2);
           arm_2_state = IDLE;
           if(des_2 == 1){
-            shipments_2[0].finished[ship_id_2]=true;
+            if(count_2 == 10){
+              shipments_2[0].finished[ship_id_2]=true;
+              count_2=0;
+              arm_2_state=IDLE;
+            }
+            else{
+              count_2++;
+              arm_2_state=TRANSFER;
+            }
           }
           // send_arm_to_state(arm_2_joint_trajectory_publisher_, rest_joints, 
           //   0.5, 0);
@@ -1176,9 +1201,11 @@ public:
     // srv.request.shipment_type = string("order_") + to_string(order) + string("_shipment_") + to_string(kit);
     if(num==1){
       agv_1.call(srv);
+      agv1_state=true;
     }
     else{
       agv_2.call(srv);
+      agv2_state=true;
     }
   }
 
@@ -1218,6 +1245,34 @@ public:
     //     transfer2=true;
     //   }
     // }
+  }
+
+  void agv_1_callback(std_msgs::String::ConstPtr &msg){
+    if(agv1_state){
+      if(msg->data[0]=='r' && msg->data[2]=='a'){
+        shipments_1.erase(shipments_1.begin());
+        agv1_state=false;
+      }
+    }
+    else{
+      if(msg->data[0]=='p'){
+        agv1_state=true;
+      }
+    }
+  }
+
+  void agv_2_callback(std_msgs::String::ConstPtr &msg){
+    if(agv2_state){
+      if(msg->data[0]=='r' && msg->data[2]=='a'){
+        shipments_2.erase(shipments_2.begin());
+        agv2_state=false;
+      }
+    }
+    else{
+      if(msg->data[0]=='p'){
+        agv2_state=true;
+      }
+    }
   }
 
   void close_gripper(int num){
@@ -1343,7 +1398,10 @@ private:
 
   bool fum_1_init, fum_2_init;
 
-  const vector<double> rest_joints{3.14, -2, 2.14, 3.27, -1.571, 0.0};
+  bool agv1_state, agv2_state;
+
+  const vector<double> rest_joints{0, -2.5, 1, 0, 0, 0};
+  
 
   vector<int> bin_type;
 

@@ -297,17 +297,6 @@ public:
           break;
         }
         if(!event.empty()){
-          ros::Duration tmp = ros::Time::now() - event[0];
-          double ttc = 1.5;
-          double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.25 - 0.055;
-          //double linear = 0;
-          //if(fabs(dist)>0.1)
-          send_arm_to_state_n(arm_1_joint_trajectory_publisher_, 
-            vector<vector<double>>{
-              invkinematic_belt(vector<double>{-0.92, 0.02, 0.03}), 
-              invkinematic_belt(vector<double>{-0.92, 0.02, -0.067})
-            }, vector<double>{ttc*3/4, ttc}, vector<double>{-dist + belt_power / 100 * maxBeltVel * ttc / 4, -dist});
-          event.pop_front();
           arm_1_state = BELT;
           break;
         }
@@ -355,15 +344,37 @@ public:
         e1:
         break;
       case BELT:
+        if(count_1==0){
+          ros::Duration tmp = ros::Time::now() - event[0];
+          double ttc = 2;
+          double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.25 - 0.06;
+          //double linear = 0;
+          //if(fabs(dist)>0.1)
+          send_arm_to_state_n(arm_1_joint_trajectory_publisher_, 
+            vector<vector<double>>{
+              invkinematic_belt(vector<double>{-0.92, 0.02, 0.03}), 
+              invkinematic_belt(vector<double>{-0.92, 0.02, -0.0665})
+            }, vector<double>{ttc/2, ttc}, vector<double>{-dist + belt_power / 100 * maxBeltVel * ttc / 2, -dist});
+          event.pop_front();
+          open_gripper(1);
+          count_1++;
+          break;
+        }
         if(catched_1){
-          auto tmp = kinematic(arm_1_joint);
-          tmp[2] += 0.2;
-          send_arm_to_state(arm_1_joint_trajectory_publisher_,
-            rest_joints,0.4,arm_1_linear);
+          // auto tmp = kinematic(arm_1_joint);
+          // tmp[2] += 0.2;
+          if(count_1==1){ 
+            send_arm_to_state(arm_1_joint_trajectory_publisher_,
+              rest_joints, 0.4,arm_1_linear);
+            count_1++;
+            break;
+          }
           // if(bin_type[bin_num_1]<0){
-          arm_1_state = CLASSIFY;
+          if(fabs(arm_1_joint[0])<1e-2 && fabs(arm_1_joint[1]+2)<1e-2 && fabs(arm_1_joint[2]+1) < 1e-2)
+            arm_1_state = CLASSIFY,count_1=0;
           bin_num_1 = 0;
         }
+        break;
       case FUMBLE:
         //open_gripper(1);
         if(catched_1){
@@ -377,13 +388,14 @@ public:
             arm_1_state = CLASSIFY;
           // }
         }
+        if(!event.empty()){
+  //        send_arm_to_state( arm_1_joint_trajectory_publisher_, rest_joints, 0.3, -0.3);
+          arm_1_state = BELT;
+          break;
+        }
+
         if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3){
           open_gripper(1);
-          if(!event.empty()){
-            send_arm_to_state( arm_1_joint_trajectory_publisher_, rest_joints, 0.3, -0.3);
-            arm_1_state = IDLE;
-            break;
-          }
           if(!fumble(bin_num_1)){
             bin_type[bin_num_1]=0; //empty
             arm_1_state=IDLE;
@@ -1440,7 +1452,7 @@ private:
 
   bool agv1_state, agv2_state;
 
-  const vector<double> rest_joints{0, -2.5, -1, 0, 0, 0};
+  const vector<double> rest_joints{0, -2, -1, 0, 0, 0};
   
 
   vector<int> bin_type;

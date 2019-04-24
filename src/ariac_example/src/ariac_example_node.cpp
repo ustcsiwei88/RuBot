@@ -59,9 +59,11 @@ using namespace std;
 
 vector<double> kinematic(vector<double> theta);
 vector<double> invkinematic(vector<double> pose);
+vector<double> invkinematic_belt(vector<double> pose);
 
 enum State{
   IDLE,
+  BELT,
   FUMBLE,
   CLASSIFY,
   TRANSFER,
@@ -297,16 +299,17 @@ public:
         if(!event.empty()){
           ros::Duration tmp = ros::Time::now() - event[0];
           double ttc = 1.5;
-          double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.25 ;
+          double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.25 - 0.055;
           //double linear = 0;
           //if(fabs(dist)>0.1)
           send_arm_to_state_n(arm_1_joint_trajectory_publisher_, 
             vector<vector<double>>{
-              invkinematic(vector<double>{-0.92, -0.02, 0.03}), 
-              invkinematic(vector<double>{-0.92, -0.02, -0.07})
+              invkinematic_belt(vector<double>{-0.92, 0.02, 0.03}), 
+              invkinematic_belt(vector<double>{-0.92, 0.02, -0.067})
             }, vector<double>{ttc*3/4, ttc}, vector<double>{-dist + belt_power / 100 * maxBeltVel * ttc / 4, -dist});
           event.pop_front();
-          arm_1_state = CLASSIFY;
+          arm_1_state = BELT;
+          break;
         }
         if(shipments_1.size()>0){
           for(int i=0;i<shipments_1[0].obj_t.size();i++){
@@ -351,6 +354,16 @@ public:
         
         e1:
         break;
+      case BELT:
+        if(catched_1){
+          auto tmp = kinematic(arm_1_joint);
+          tmp[2] += 0.2;
+          send_arm_to_state(arm_1_joint_trajectory_publisher_,
+            rest_joints,0.4,arm_1_linear);
+          // if(bin_type[bin_num_1]<0){
+          arm_1_state = CLASSIFY;
+          bin_num_1 = 0;
+        }
       case FUMBLE:
         //open_gripper(1);
         if(catched_1){
@@ -432,12 +445,17 @@ public:
           // start[2]+=0.17;
 
           if(des_1==1){
+            // send_arm_to_state_n(arm_1_joint_trajectory_publisher_, 
+            //   vector<vector<double>>{
+            //     classify2bpos_1, 
+            //     invkinematic(vector<double>{0.001+ /*x_r_1 - */x_d_1*3/4, -1.1+/*y_r_1-*/y_d_1*3/4, 0.2}), 
+            //     invkinematic(vector<double>{0.001+ /*x_r_1 - */x_d_1*3/4, -1.1+/*y_r_1-*/y_d_1*3/4, 0.0})}, 
+            //   vector<double>{1,2,3}, vector<double>{0.5 , 1.18, 1.18});
             send_arm_to_state_n(arm_1_joint_trajectory_publisher_, 
               vector<vector<double>>{
-                classify2bpos_1, 
                 invkinematic(vector<double>{0.001+ /*x_r_1 - */x_d_1*3/4, -1.1+/*y_r_1-*/y_d_1*3/4, 0.2}), 
                 invkinematic(vector<double>{0.001+ /*x_r_1 - */x_d_1*3/4, -1.1+/*y_r_1-*/y_d_1*3/4, 0.0})}, 
-              vector<double>{1,2,3}, vector<double>{0.5 , 1.18, 1.18});
+              vector<double>{2,3}, vector<double>{1.18, 1.18});
             arm_1_state = TRANSFER;
           }
           else if(des_1==2){
@@ -551,13 +569,13 @@ public:
     if(bin_num>=3){
       dx = dx_1, dy=dy_1;dir=dir_1;
       if(dx<-0.5){
-        dx=-0.06; dy=-0.24;
+        dx=-0.08; dy=-0.24;
       }
       else{
         dx += dir ? 0.06 : -0.06;
         //dy += 0.05;
         if(dx > 0.479){dx=0.46, dy+=0.06;dir=!dir;}
-        else if(dx<-0.061){dx=-0.06, dy+=0.06;dir=!dir;}
+        else if(dx<-0.081){dx=-0.08, dy+=0.06;dir=!dir;}
       }
       if(dy>0.239){dx=-1; dir_1=true; dx_1=-1;return false;}
       dx_1=dx;dy_1=dy;dir_1=dir;
@@ -565,13 +583,13 @@ public:
     else{
       dx = dx_2, dy=dy_2;dir=dir_2;
       if(dx<-.5){
-        dx=-0.06; dy=-0.24;
+        dx=-0.08; dy=-0.24;
       }
       else{
         dx += dir ? 0.06 : -0.06;
         //dy += 0.05;
         if(dx > 0.479){dx=0.46, dy+=0.06;dir=!dir;}
-        else if(dx<-0.061){dx=-0.06, dy+=0.06;dir=!dir;}
+        else if(dx<-0.081){dx=-0.08, dy+=0.06;dir=!dir;}
       }
       if(dy>0.239){dx=-1; dir_2=true; dx_2=-1;return false;}
       dx_2=dx;dy_2=dy;dir_2=dir;
@@ -581,7 +599,8 @@ public:
     if(bin_num>=3){
       vector<double> p1;
       if(fum_1_init)p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9 + 0.7});
-      else p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.13});
+      else 
+        p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.13});
       auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9-0.012});
       auto p3 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.16});
       // auto res = kinematic(p1);
@@ -600,8 +619,9 @@ public:
     else{
       vector<double> p1;
       if(fum_2_init)p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9 + 0.7});
-      else p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.13});
-      auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9-0.015});
+      else 
+        p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.13});
+      auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9-0.012});
       auto p3 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.16});
       // auto res = kinematic(p1);
       //auto p1 = invkinematic(vector<double>{-x+dx, dy, z+0.05});
@@ -611,7 +631,7 @@ public:
            vector<double>{y - arm_2_zero, y - arm_2_zero, y - arm_2_zero, y - arm_2_zero});
       else
         send_arm_to_state_n(arm_2_joint_trajectory_publisher_, vector<vector<double>>{p1,p2,p2,p3}, 
-          vector<double>{0.1, 0.2, 0.3, 0.4}, 
+          vector<double>{0.2, 0.35, 0.55, 0.7}, 
           vector<double>{y - arm_2_zero, y - arm_2_zero, y - arm_2_zero, y - arm_2_zero});
       fum_2_init=false;
     }
@@ -839,12 +859,17 @@ public:
             // }
             // cout<<endl;
             
+            // send_arm_to_state_n(arm_2_joint_trajectory_publisher_, 
+            //   vector<vector<double>>{
+            //     classify2bpos_2, 
+            //     invkinematic(vector<double>{0.001+/*x_r_2-*/x_d_2*3/4, 1.1+/*y_r_2-*/y_d_2*3/4, 0.2}), 
+            //     invkinematic(vector<double>{0.001+/*x_r_2-*/x_d_2*3/4, 1.1+/*y_r_2-*/y_d_2*3/4, 0.0})}, 
+            //   vector<double>{1, 2, 3}, vector<double>{-0.5 , -1.18, -1.18});
             send_arm_to_state_n(arm_2_joint_trajectory_publisher_, 
               vector<vector<double>>{
-                classify2bpos_2, 
                 invkinematic(vector<double>{0.001+/*x_r_2-*/x_d_2*3/4, 1.1+/*y_r_2-*/y_d_2*3/4, 0.2}), 
                 invkinematic(vector<double>{0.001+/*x_r_2-*/x_d_2*3/4, 1.1+/*y_r_2-*/y_d_2*3/4, 0.0})}, 
-              vector<double>{1, 2, 3}, vector<double>{-0.5 , -1.18, -1.18});
+              vector<double>{2, 3}, vector<double>{-1.18, -1.18});
             arm_2_state=TRANSFER;
           }
           else if(des_2==2){
@@ -1415,7 +1440,7 @@ private:
 
   bool agv1_state, agv2_state;
 
-  const vector<double> rest_joints{0, -2.5, 1, 0, 0, 0};
+  const vector<double> rest_joints{0, -2.5, -1, 0, 0, 0};
   
 
   vector<int> bin_type;

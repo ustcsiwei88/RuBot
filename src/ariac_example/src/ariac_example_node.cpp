@@ -372,13 +372,17 @@ public:
           // if(bin_type[bin_num_1]<0){
           if(fabs(arm_1_joint[0])<1e-2 && fabs(arm_1_joint[1]+2)<1e-2 && fabs(arm_1_joint[2]+1) < 1e-2)
             arm_1_state = CLASSIFY,count_1=0;
+          if(count_1>200)
+            arm_1_state = IDLE, count_1=0;
           bin_num_1 = 0;
+          count_1++;
+
         }
         break;
       case FUMBLE:
         //open_gripper(1);
         if(catched_1){
-          dx_1 = -1;
+          // dx_1 = -1;
           dir_1= true;fum_1_init=true;
           auto tmp = kinematic(arm_1_joint);
           tmp[2] += 0.3;
@@ -391,9 +395,13 @@ public:
         if(!event.empty()){
   //        send_arm_to_state( arm_1_joint_trajectory_publisher_, rest_joints, 0.3, -0.3);
           arm_1_state = BELT;
+          fum_1_init=true;
           break;
         }
-
+        if(trans_2){
+          arm_1_state = IDLE;
+          fum_1_init=true;
+        }
         if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3){
           open_gripper(1);
           if(!fumble(bin_num_1)){
@@ -429,7 +437,7 @@ public:
               }
               if(des_1==1) break;
             }
-            if(shipments_2.size()>0){
+            if(shipments_2.size()>0 && !trans_1){     //-------------------------
 
               for(int i=0;i<shipments_2[0].obj_t.size();i++){
                 if(!shipments_2[0].finished[i] && type_1 == shipments_2[0].obj_t[i]){
@@ -497,7 +505,9 @@ public:
             }
             if(i==0){
               close_gripper(1);
-              send_arm_to_zero_state(arm_1_joint_trajectory_publisher_);
+              //send_arm_to_zero_state(arm_1_joint_trajectory_publisher_);/
+              arm_1_state = IDLE;
+              break;
             }
             else if(i>=4){
               double y = bin_y[i-1];
@@ -610,7 +620,7 @@ public:
     // cout<<dx<<" "<<dy<<endl;
     if(bin_num>=3){
       vector<double> p1;
-      if(fum_1_init)p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9 + 0.7});
+      if(fum_1_init)p1 = invkinematic(vector<double>{-x+0.19, -0.03, z-0.9 + 0.6});
       else 
         p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.13});
       auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9-0.012});
@@ -630,7 +640,7 @@ public:
 
     else{
       vector<double> p1;
-      if(fum_2_init)p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9 + 0.7});
+      if(fum_2_init)p1 = invkinematic(vector<double>{-x+0.19, -0.03, z-0.9 + 0.6});
       else 
         p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.13});
       auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9-0.012});
@@ -798,6 +808,12 @@ public:
           // if(bin_type[bin_num_2]<0){
             arm_2_state = CLASSIFY;
           // }
+          break;
+        }
+        if(trans_1){
+          arm_2_state=IDLE;
+          fum_2_init=true;
+          break;
         }
         if(reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear - arm_2_linear_goal) <= 4e-3){
           open_gripper(2);
@@ -912,7 +928,7 @@ public:
             }
             if(i==7){
               close_gripper(2);
-              send_arm_to_zero_state(arm_2_joint_trajectory_publisher_);
+              // send_arm_to_zero_state(arm_2_joint_trajectory_publisher_);
               arm_2_state = IDLE;
             }
             else if(i<4){

@@ -150,6 +150,9 @@ public:
     agv1_state = false;
     agv2_state = false;
 
+
+    bin_mem.resize(6); //-1 unknown 0 empty 1 yes
+
     // for(auto i: classify_pos_2) cout<<i<<" ";
     //   cout<<endl;
     // for(auto i: classify2bpos_2) cout<<i<<" ";
@@ -408,12 +411,15 @@ public:
         if(!event.empty()){
   //        send_arm_to_state( arm_1_joint_trajectory_publisher_, rest_joints, 0.3, -0.3);
           arm_1_state = BELT;
+          bin_mem[bin_num_1-1][make_pair(dx_1,dy_1)]=0;
           fum_1_init=true;
           break;
         }
         if(trans_2){
           arm_1_state = IDLE;
+          bin_mem[bin_num_1-1][make_pair(dx_1,dy_1)]=0;
           fum_1_init=true;
+          break;
         }
         if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3){
           open_gripper(1);
@@ -526,7 +532,7 @@ public:
               double y = bin_y[i-1];
               double x = -0.4;
               double z = 0.64;
-              double dx=0.1, dy=0;
+              double dx=0.16, dy=0;
               auto p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9 + 0.6});
               // auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.01});
               auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9 + 0.23});
@@ -534,6 +540,7 @@ public:
                 p1, p2}, 
                 vector<double>{0.6, 1}, 
                 vector<double>{y - arm_1_zero, y - arm_1_zero});
+              bin_mem[i-1][make_pair(dx,dy)]=0;
               arm_1_state = TRANSFER;
               bin_type[i] = type_1;
             }
@@ -593,6 +600,8 @@ public:
   
   int count_1=0, count_2=0;
 
+  vector<map<pair<double,double>, int>> bin_mem;
+
   bool fumble(int bin_num){
     bin_num--;
     double y = bin_y[bin_num];
@@ -602,6 +611,7 @@ public:
     double dx,dy;
     bool dir;
     if(bin_num>=3){
+      refum1:
       dx = dx_1, dy=dy_1;dir=dir_1;
       if(dx<-0.5){
         dx=-0.08; dy=-0.24; dir=true;
@@ -612,10 +622,15 @@ public:
         if(dx > 0.479){dx=0.46, dy+=0.06;dir=!dir;}
         else if(dx<-0.081){dx=-0.08, dy+=0.06;dir=!dir;}
       }
-      if(dy>0.239){dx=-1; dir_1=true; dx_1=-1;return false;}
+      if(dy>0.241){dx=-1; dir_1=true; dx_1=-1;return false;}
       dx_1=dx;dy_1=dy;dir_1=dir;
+      if(bin_mem[bin_num][make_pair(dx,dy)]>0){
+        goto refum1;
+      }
+      bin_mem[bin_num][make_pair(dx,dy)]=1;
     }
     else{
+      refum2:
       dx = dx_2, dy=dy_2;dir=dir_2;
       if(dx<-.5){
         dx=-0.08; dy=-0.24; dir=true;
@@ -626,8 +641,12 @@ public:
         if(dx > 0.479){dx=0.46, dy+=0.06;dir=!dir;}
         else if(dx<-0.081){dx=-0.08, dy+=0.06;dir=!dir;}
       }
-      if(dy>0.239){dx=-1; dir_2=true; dx_2=-1;return false;}
+      if(dy>0.241){dx=-1; dir_2=true; dx_2=-1;return false;}
       dx_2=dx;dy_2=dy;dir_2=dir;
+      if(bin_mem[bin_num][make_pair(dx,dy)]>0){
+        goto refum2;
+      }
+      bin_mem[bin_num][make_pair(dx,dy)]=1;
     }
     // cout<<dir<<endl;
     // cout<<dx<<" "<<dy<<endl;
@@ -829,11 +848,13 @@ public:
           // if(bin_type[bin_num_2]<0){
             arm_2_state = CLASSIFY;
           // }
+          bin_mem[bin_num_2-1][make_pair(dx_2,dy_2)]=0;
           break;
         }
         if(trans_1){
           arm_2_state=IDLE;
           fum_2_init=true;
+          bin_mem[bin_num_2-1][make_pair(dx_2,dy_2)]=0;
           break;
         }
         if(reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear - arm_2_linear_goal) <= 4e-3){
@@ -956,7 +977,7 @@ public:
               double y = bin_y[i-1];
               double x = -0.4;
               double z = 0.64;
-              double dx=0.1, dy=0;
+              double dx=0.16, dy=0;
               auto p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9 + 0.6});
               auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9 + 0.23});
               send_arm_to_state_n(arm_2_joint_trajectory_publisher_, vector<vector<double>>{
@@ -965,6 +986,7 @@ public:
                 vector<double>{y - arm_2_zero, y - arm_2_zero});
               arm_2_state = TRANSFER;
               bin_type[i] = type_2;
+              bin_mem[i-1][make_pair(dx,dy)]=0;
             }
             else{
               if(count_2==0)

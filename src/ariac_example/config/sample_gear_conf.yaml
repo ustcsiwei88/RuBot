@@ -34,8 +34,8 @@ sensors:
   #   pose:
   #     xyz: [-0.3, -0.383, 1.2]
   #     rpy: [0, 1.5707, 0]
-  # laser_profiler_1:
-  #   type: laser_profiler
-  #   pose:
-  #     xyz: [1.21, 4, 1.6]
-  #     rpy: ['-pi', 'pi/2', 'pi/2']
+  laser_profiler_1:
+    type: laser_profiler
+    pose:
+      xyz: [1.21, 4, 1.6]
+      rpy: ['-pi', 'pi/2', 'pi/2']

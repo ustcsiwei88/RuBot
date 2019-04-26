@@ -19,7 +19,7 @@
 #include <string>
 #include <deque>
 #include <queue>
-
+#include <cmath>
 
 #include <ros/ros.h>
 
@@ -157,10 +157,15 @@ public:
     //   cout<<endl;
     // for(auto i: classify2bpos_2) cout<<i<<" ";
     //   cout<<endl;
-    
+    cos_table.resize(400);
+    double tmp = -0.34999999404;
+    for(int i=0;i<400;i++){
+      cos_table[i] = cos(tmp);
+      tmp += 0.00175438600127;
+    }
   }
 
-
+  vector<double> cos_table;
   /// Called when a new message is received.
   void current_score_callback(const std_msgs::Float32::ConstPtr & msg) {
     if (msg->data != current_score_)
@@ -1264,6 +1269,49 @@ public:
       event.emplace_back(ros::Time::now());
     }
   }
+  double height = 0.0;
+  ros::Time stime;
+  void laser_profiler_callback(const sensor_msgs::LaserScan::ConstPtr & msg) {
+    // size_t number_of_valid_ranges = std::count_if(
+    //   msg->ranges.begin(), msg->ranges.end(), [](const float f) {return std::isfinite(f);});
+    // if (number_of_valid_ranges > 0) {
+    //   ROS_INFO_THROTTLE(1, "Laser profiler sees something.");
+    // }
+
+    // for(int i=0;i<msg->ranges.size();i++){
+    //   if(msg->ranges[i] != HUGE_VAL)
+    //     cout<<max(0.685 - msg->ranges[i] * cos_table[i],0)<<" ";
+    // }
+    
+    double tmp = 0.0;
+    for(int i=0;i<msg->ranges.size();i++){
+      if(msg->ranges[i] != HUGE_VAL)
+        tmp = max(tmp, 0.685 - msg->ranges[i] * cos_table[i]);
+      // 0 empty, <0.005 piston, <0.01 gear, gasket<0.016, <0.021 disk, > 0.065 pully
+      if(height==0.0){
+        if(tmp>0){
+          height=tmp;
+          stime = msg->header.stamp;
+          height=tmp;
+        }
+      }
+      else if(tmp==0.0){
+        if(height>0){
+          int type = 5;
+          if(height<0.005) type = 4;  //piston
+          else if(height<0.01) type = 2;  //gear
+          else if(height<0.016) type = 1; //gasket
+          else if(height<0.021) type = 3; //disk
+          else type = 5;
+          events.emplace_back(stime, type);
+        }
+        height = 0.0;
+      }
+      else{
+        height = max(height, tmp);
+      }
+    }
+  }
 
   void to_agv1(double x, double y, double theta){
 
@@ -1413,6 +1461,7 @@ private:
 
   const tf2::Quaternion q_logical=tf2::Quaternion(0.0, -0.70707272301, 0.0, 0.707140837031);
 
+  // deque<pair<ros::Time,int>> event;
   deque<ros::Time> event;
 
   const double maxBeltVel = 0.2;
@@ -1535,13 +1584,7 @@ void proximity_sensor_callback(const sensor_msgs::Range::ConstPtr & msg) {
   }
 }
 
-void laser_profiler_callback(const sensor_msgs::LaserScan::ConstPtr & msg) {
-  size_t number_of_valid_ranges = std::count_if(
-    msg->ranges.begin(), msg->ranges.end(), [](const float f) {return std::isfinite(f);});
-  if (number_of_valid_ranges > 0) {
-    ROS_INFO_THROTTLE(1, "Laser profiler sees something.");
-  }
-}
+
 
 // %Tag(MAIN)%
 int main(int argc, char ** argv) {
@@ -1600,7 +1643,11 @@ int main(int argc, char ** argv) {
   //TODO:DECISION
 
   // ros::Subscriber laser_profiler_subscriber = node.subscribe(
-  //   "/ariac/laser_profiler_1", 10, laser_profiler_callback);
+  //   "/ariac/laser_profiler_1", 10, laser_profiler_callback);  
+
+  ros::Subscriber laser_profiler_subscriber = node.subscribe(
+    "/ariac/laser_profiler_1", 10, 
+    &MyCompetitionClass::laser_profiler_callback, &comp_class);
 
   ros::Subscriber belt_state_subscriber = node.subscribe(
     "/ariac/conveyor/state", 10, 

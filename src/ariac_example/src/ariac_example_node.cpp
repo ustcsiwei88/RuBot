@@ -70,6 +70,14 @@ enum State{
   TRANSIT
 };
 
+enum PType{
+  GASKET=1,
+  GEAR=2,
+  DISC=3,
+  PISTON_ROD=4,
+  PULLEY=5
+};
+
 void start_competition(ros::NodeHandle & node) {
   // Create a Service client for the correct service, i.e. '/ariac/start_competition'.
   ros::ServiceClient start_client =
@@ -1297,12 +1305,12 @@ public:
       }
       else if(tmp==0.0){
         if(height>0){
-          int type = 5;
-          if(height<0.005) type = 4;  //piston
-          else if(height<0.01) type = 2;  //gear
-          else if(height<0.016) type = 1; //gasket
-          else if(height<0.021) type = 3; //disk
-          else type = 5;
+          PType type = PULLEY;
+          if(height<0.005) type = PISTON_ROD;  //piston
+          else if(height<0.01) type = GEAR;  //gear
+          else if(height<0.016) type = GASKET; //gasket
+          else if(height<0.021) type = DISC; //disc
+          else type = PULLEY;
           events.emplace_back(stime, type);
         }
         height = 0.0;
@@ -1461,7 +1469,7 @@ private:
 
   const tf2::Quaternion q_logical=tf2::Quaternion(0.0, -0.70707272301, 0.0, 0.707140837031);
 
-  // deque<pair<ros::Time,int>> event;
+  deque<pair<ros::Time, PType>> events;
   deque<ros::Time> event;
 
   const double maxBeltVel = 0.2;

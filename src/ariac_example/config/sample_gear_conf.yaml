@@ -1,9 +1,9 @@
 sensors:
-  break_beam_1:
-    type: break_beam
-    pose:
-      xyz: [1.6, 2.25, 0.91]
-      rpy: [0, 0, 'pi']
+  # break_beam_1:
+  #   type: break_beam
+  #   pose:
+  #     xyz: [1.6, 2.25, 0.91]
+  #     rpy: [0, 0, 'pi']
   # proximity_sensor_1:
   #   type: proximity_sensor
   #   pose:
@@ -37,5 +37,5 @@ sensors:
   laser_profiler_1:
     type: laser_profiler
     pose:
-      xyz: [1.21, 4, 1.6]
+      xyz: [1.21, 2.55, 1.6]
       rpy: ['-pi', 'pi/2', 'pi/2']

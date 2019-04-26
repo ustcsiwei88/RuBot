@@ -290,6 +290,10 @@ public:
     switch(arm_1_state){
       case IDLE:
         // send_arm_to_state( arm_1_joint_trajectory_publisher_, invkinematic(vector<double>{0.001,-1.05, -0.1}), 0.3, 1.18);break;
+        while(!events.empty() && (ros::Time::now() - events[0].first).toSec() > 9){
+          events.pop_front();
+          // may move to another queue in the future.
+        }
         if(count_1 == 0 && (!reached(arm_1_joint, arm_1_joint_goal) || fabs(arm_1_linear - arm_1_linear_goal) > 4e-3))
           break;
         if(trans_2){
@@ -317,9 +321,29 @@ public:
           }
           break;
         }
-        if(!event.empty()){
-          arm_1_state = BELT;
-          break;
+        // if(!event.empty()){
+        //   arm_1_state = BELT;
+        //   break;
+        // }
+        if(shipments_1.size()>0){
+          for(int i=0;i<shipments_1[0].obj_t.size();i++){
+            int item = shipments_1[0].obj_t[i];
+            for(auto &tmp:events)
+              if(tmp.second==item){
+                arm_1_state=BELT;
+                goto e1;
+              }
+          }
+        }
+        if(shipments_2.size()>0){
+          for(int i=0;i<shipments_2[0].obj_t.size();i++){
+            int item = shipments_2[0].obj_t[i];
+            for(auto &tmp:events)
+              if(tmp.second==item){
+                arm_1_state=BELT;
+                goto e1;
+              }
+          }
         }
         if(shipments_1.size()>0){
           for(int i=0;i<shipments_1[0].obj_t.size();i++){
@@ -369,18 +393,49 @@ public:
         break;
       case BELT:
         if(count_1==0){
-          ros::Duration tmp = ros::Time::now() - event[0];
+          int ind = -1;
+          if(shipments_1.size()>0){
+            for(int i=0;i<shipments_1[0].obj_t.size();i++){
+              int item = shipments_1[0].obj_t[i];
+              for(int j=0;j<events.size();j++)
+                if(item==events[j].second){
+                  ind = j;
+                  goto e3;
+                }
+            }
+          }
+          if(shipments_2.size()>0){
+            for(int i=0;i<shipments_2[0].obj_t.size();i++){
+              int item = shipments_2[0].obj_t[i];
+              for(int j=0;j<events.size();j++)
+                if(item==events[j].second){
+                  ind = j;
+                  goto e3;
+                }
+            }
+          }
+          e3:
+          if(ind==-1){
+            arm_1_state=IDLE;
+            count_1=0;
+            break;
+          }
+          ros::Duration tmp = ros::Time::now() - events[ind].first;
           double ttc = 2.5;
-          double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.25 - 0.06;
+          double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.55 - 0.06;
+          // double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.25 - 0.06;
           //double linear = 0;
           //if(fabs(dist)>0.1)
+          // cout<<"event size "<<events.size()<<endl;
+          
           send_arm_to_state_n(arm_1_joint_trajectory_publisher_, 
             vector<vector<double>>{
               invkinematic_belt(vector<double>{-0.92, 0.02, 0.04}), 
               invkinematic_belt(vector<double>{-0.92, 0.02, -0.0658})
             }, vector<double>{ttc*3/5, ttc}, 
             vector<double>{-dist + belt_power / 100 * maxBeltVel * ttc * 2/5, -dist});
-          event.pop_front();
+          events.erase(events.begin()+ind);
+          // cout<<"event size after del "<<events.size()<<endl;
           open_gripper(1);
           count_1++;
           break;
@@ -421,18 +476,43 @@ public:
             arm_1_state = CLASSIFY;
           // }
         }
-        if(!event.empty()){
-  //        send_arm_to_state( arm_1_joint_trajectory_publisher_, rest_joints, 0.3, -0.3);
-          arm_1_state = BELT;
-          bin_mem[bin_num_1-1][make_pair(dx_1,dy_1)]=0;
-          fum_1_init=true;
-          break;
-        }
         if(trans_2){
           arm_1_state = IDLE;
           bin_mem[bin_num_1-1][make_pair(dx_1,dy_1)]=0;
           fum_1_init=true;
           break;
+        }
+        {
+          bool tag=false;
+          if(shipments_1.size()>0){
+            for(int i=0;i<shipments_1[0].obj_t.size();i++){
+              int item = shipments_1[0].obj_t[i];
+              for(auto &tmp:events)
+                if(tmp.second==item){
+                  tag=true;
+                  goto e4;
+                }
+            }
+          }
+          if(shipments_2.size()>0){
+            for(int i=0;i<shipments_2[0].obj_t.size();i++){
+              int item = shipments_2[0].obj_t[i];
+              for(auto &tmp:events)
+                if(tmp.second==item){
+                  tag=true;
+                  goto e4;
+                }
+            }
+          }
+
+          e4:
+          if(tag){
+    //        send_arm_to_state( arm_1_joint_trajectory_publisher_, rest_joints, 0.3, -0.3);
+            arm_1_state = BELT;
+            bin_mem[bin_num_1-1][make_pair(dx_1,dy_1)]=0;
+            fum_1_init=true;
+            break;
+          }
         }
         if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3){
           open_gripper(1);
@@ -1271,12 +1351,12 @@ public:
       return 5;
     }
   }
-  void break_beam_callback(const osrf_gear::Proximity::ConstPtr & msg) {
-    if (msg->object_detected) {  // If there is an object in proximity.
-      ROS_INFO("Break beam triggered.");
-      event.emplace_back(ros::Time::now());
-    }
-  }
+  // void break_beam_callback(const osrf_gear::Proximity::ConstPtr & msg) {
+  //   if (msg->object_detected) {  // If there is an object in proximity.
+  //     ROS_INFO("Break beam triggered.");
+  //     event.emplace_back(ros::Time::now());
+  //   }
+  // }
   double height = 0.0;
   ros::Time stime;
   void laser_profiler_callback(const sensor_msgs::LaserScan::ConstPtr & msg) {
@@ -1296,28 +1376,30 @@ public:
       if(msg->ranges[i] != HUGE_VAL)
         tmp = max(tmp, 0.685 - msg->ranges[i] * cos_table[i]);
       // 0 empty, <0.005 piston, <0.01 gear, gasket<0.016, <0.021 disk, > 0.065 pully
-      if(height==0.0){
-        if(tmp>0){
-          height=tmp;
-          stime = msg->header.stamp;
-          height=tmp;
-        }
+    }
+    if(height==0.0){
+      if(tmp>0){
+        height=tmp;
+        stime = msg->header.stamp;
+        height=tmp;
       }
-      else if(tmp==0.0){
-        if(height>0){
-          PType type = PULLEY;
-          if(height<0.005) type = PISTON_ROD;  //piston
-          else if(height<0.01) type = GEAR;  //gear
-          else if(height<0.016) type = GASKET; //gasket
-          else if(height<0.021) type = DISC; //disc
-          else type = PULLEY;
-          events.emplace_back(stime, type);
-        }
-        height = 0.0;
+    }
+    else if(tmp==0.0){
+      if(height>0){
+        PType type = PULLEY;
+        if(height<0.005) type = PISTON_ROD;  //piston
+        else if(height<0.01) type = GEAR;  //gear
+        else if(height<0.016) type = GASKET; //gasket
+        else if(height<0.021) type = DISC; //disc
+        else type = PULLEY;
+        events.emplace_back(stime, type);
+        // cout<<type<<"--"<<endl;
+        
       }
-      else{
-        height = max(height, tmp);
-      }
+      height = 0.0;
+    }
+    else{
+      height = max(height, tmp);
     }
   }
 
@@ -1470,7 +1552,7 @@ private:
   const tf2::Quaternion q_logical=tf2::Quaternion(0.0, -0.70707272301, 0.0, 0.707140837031);
 
   deque<pair<ros::Time, PType>> events;
-  deque<ros::Time> event;
+  // deque<ros::Time> event;
 
   const double maxBeltVel = 0.2;
   // 'bin1': [-0.3, -1.916, 0],
@@ -1637,9 +1719,9 @@ int main(int argc, char ** argv) {
   // %EndTag(SUB_FUNC)%
 
   // Subscribe to the '/ariac/break_beam_1_change' topic.
-  ros::Subscriber break_beam_subscriber = node.subscribe(
-    "/ariac/break_beam_1_change", 10,
-    &MyCompetitionClass::break_beam_callback, &comp_class);
+  // ros::Subscriber break_beam_subscriber = node.subscribe(
+  //   "/ariac/break_beam_1_change", 10,
+  //   &MyCompetitionClass::break_beam_callback, &comp_class);
 
   // Subscribe to the '/ariac/logical_camera_1' topic.
   ros::Subscriber logical_camera_subscriber = node.subscribe(

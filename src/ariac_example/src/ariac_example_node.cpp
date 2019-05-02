@@ -559,7 +559,7 @@ public:
                   y_d_1 = shipments_1[0].position[i].second;
                   // cout<<shipments_1[0].theta[i] <<" ---=-=-=---- "<<theta_1<<endl;
                   dtheta_1 = shipments_1[0].theta[i] - theta_1;
-                  cout<<"theta_1 :"<<theta_1 <<" thetai"<<shipments_1[0].theta[i]<<endl;
+                  // cout<<"theta_1 :"<<theta_1 <<" thetai"<<shipments_1[0].theta[i]<<endl;
                   while(dtheta_1 > PI) dtheta_1 -= PI_2;
                   while(dtheta_1 <= -PI) dtheta_1 += PI_2;
 
@@ -798,7 +798,7 @@ public:
       if(fum_1_init)p1 = invkinematic(vector<double>{-x+0.19, -0.03, z-0.9 + 0.6});
       else 
         p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.13});
-      auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9-0.012});
+      auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9-0.010});
       auto p3 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.16});
       // auto res = kinematic(p1);
       //auto p1 = invkinematic(vector<double>{-x+dx, dy, z+0.05});
@@ -818,7 +818,7 @@ public:
       if(fum_2_init)p1 = invkinematic(vector<double>{-x+0.19, -0.03, z-0.9 + 0.6});
       else 
         p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.13});
-      auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9-0.012});
+      auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9-0.010});
       auto p3 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.16});
       // auto res = kinematic(p1);
       //auto p1 = invkinematic(vector<double>{-x+dx, dy, z+0.05});
@@ -1391,7 +1391,8 @@ public:
       if(item.pose.position.y > 0) {
         divx_1 = item.pose.position.z + 0.05;
         divy_1 = - item.pose.position.y + 0.17;
-        theta_1 = -atan2(2*(z*w+y*x), 1-2*(z*z+y*y));
+        theta_1 = PI + atan2(2*(z*w+y*x), 1-2*(z*z+y*y));
+        if(theta_1>PI) theta_1-=PI_2;
         // theta_1 = - theta_1;
         // cout<<theta_1<<"---------------"<<endl;
         type_1 = type2int(item.type);

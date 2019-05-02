@@ -175,23 +175,23 @@ public:
 
   vector<double> cos_table;
   /// Called when a new message is received.
-  void current_score_callback(const std_msgs::Float32::ConstPtr & msg) {
-    if (msg->data != current_score_)
-    {
-      ROS_INFO_STREAM("Score: " << msg->data);
-    }
-    current_score_ = msg->data;
-  }
+  // void current_score_callback(const std_msgs::Float32::ConstPtr & msg) {
+  //   if (msg->data != current_score_)
+  //   {
+  //     ROS_INFO_STREAM("Score: " << msg->data);
+  //   }
+  //   current_score_ = msg->data;
+  // }
 
 
   /// Called when a new message is received.
-  void competition_state_callback(const std_msgs::String::ConstPtr & msg) {
-    if (msg->data == "done" && competition_state_ != "done")
-    {
-      ROS_INFO("Competition ended.");
-    }
-    competition_state_ = msg->data;
-  }
+  // void competition_state_callback(const std_msgs::String::ConstPtr & msg) {
+  //   if (msg->data == "done" && competition_state_ != "done")
+  //   {
+  //     ROS_INFO("Competition ended.");
+  //   }
+  //   competition_state_ = msg->data;
+  // }
 
   vector<Shipment> shipments_1, shipments_2;
 
@@ -287,6 +287,7 @@ public:
         // shipments_1.erase(shipments_1.begin());
       }
     }
+    // cout<< arm_1_state<<endl;
     switch(arm_1_state){
       case IDLE:
         // send_arm_to_state( arm_1_joint_trajectory_publisher_, invkinematic(vector<double>{0.001,-1.05, -0.1}), 0.3, 1.18);break;
@@ -301,10 +302,13 @@ public:
           bin_num_1 = 0;
           if(count_1<2){
             send_arm_to_state_n(arm_1_joint_trajectory_publisher_, vector<vector<double>>{
-              desk_hand_1_0, desk_hand_1_4, desk_hand_1_5, desk_hand_1_6, desk_hand_1_7, desk_hand_1_8,
-              desk_hand_1_9, desk_hand_1_10, desk_hand_1_11, desk_hand_1_12
-            }, vector<double>{1, 1.5, 1.8, 2.1, 2.4, 2.7, 3.0, 3.3, 3.6, 3.9}, 
-            vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+              desk_hand_1_0, desk_hand_1_4, desk_hand_1_4, 
+              desk_hand_1_5, desk_hand_1_6, desk_hand_1_6, 
+              desk_hand_1_7, desk_hand_1_8, desk_hand_1_8,
+              desk_hand_1_9, desk_hand_1_10, desk_hand_1_10, 
+              desk_hand_1_11, desk_hand_1_12, desk_hand_1_12
+            }, vector<double>{0.7, 1.2, 1.4, 1.8, 2.1, 2.3, 2.7, 3.0, 3.2, 3.6, 3.9, 4.1, 4.5, 4.7, 4.9},
+            vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,0.0, 0.0, 0.0, 0.0, 0.0, 0.0,0.0,0.0});
             count_1+=2;
           }
           else{
@@ -315,7 +319,7 @@ public:
               send_arm_to_state( arm_1_joint_trajectory_publisher_, classify_pos_1, 0.3, 0);
             }
             count_1++;
-            if(count_1>200){
+            if(count_1>250){
               count_1=1;
             }
           }
@@ -424,7 +428,9 @@ public:
           }
           ros::Duration tmp = ros::Time::now() - events[ind].first;
           double ttc = 2.5;
-          double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.55 - 0.03;
+          double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.55 - 0.02;
+          if(events[ind].second==3) dist -= 0.01;
+          else if(events[ind].second==5) dist -= 0.04;
           // double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.25 - 0.06;
           //double linear = 0;
           //if(fabs(dist)>0.1)
@@ -489,6 +495,7 @@ public:
           if(shipments_1.size()>0){
             for(int i=0;i<shipments_1[0].obj_t.size();i++){
               int item = shipments_1[0].obj_t[i];
+              if(shipments_1[0].finished[i]) continue;
               for(auto &tmp:events)
                 if(tmp.second==item){
                   tag=true;
@@ -499,6 +506,7 @@ public:
           if(shipments_2.size()>0){
             for(int i=0;i<shipments_2[0].obj_t.size();i++){
               int item = shipments_2[0].obj_t[i];
+              if(shipments_2[0].finished[i]) continue;
               for(auto &tmp:events)
                 if(tmp.second==item){
                   tag=true;
@@ -533,6 +541,8 @@ public:
           if(count_1==3){     //wait around 0.1s for classification
             bin_type[bin_num_1] = type_1;
             des_1 = -1;
+            x_r_1 = divx_1;
+            y_r_1 = divy_1;
             if(shipments_1.size()>0){
               for(int i=0;i<shipments_1[0].obj_t.size();i++){
                 if(!shipments_1[0].finished[i] && type_1 == shipments_1[0].obj_t[i]){
@@ -540,9 +550,9 @@ public:
                   des_1 = 1;
                   count_1 = 0;
                   x_d_1 = shipments_1[0].position[i].first;
-                  x_r_1 = divx_1;
+                  
                   y_d_1 = shipments_1[0].position[i].second;
-                  y_r_1 = divy_1;
+                  
 
                   ship_id_1 = i;
 
@@ -587,18 +597,28 @@ public:
             //   vector<double>{1,2,3}, vector<double>{0.5 , 1.18, 1.18});
             send_arm_to_state_n(arm_1_joint_trajectory_publisher_, 
               vector<vector<double>>{
-                invkinematic(vector<double>{0.001+ /*x_r_1 - */x_d_1*3/4, -1.1+/*y_r_1-*/y_d_1*3/4, 0.2}), 
-                invkinematic(vector<double>{0.001+ /*x_r_1 - */x_d_1*3/4, -1.1+/*y_r_1-*/y_d_1*3/4, 0.0})}, 
+                invkinematic(vector<double>{0.0001 /*x_r_1  */ + x_d_1*3/4, -1.2 /*y_r_1*/ + y_d_1*3/4, 0.2}), 
+                invkinematic(vector<double>{0.0001 /*x_r_1  */ + x_d_1*3/4, -1.2 /*y_r_1*/ + y_d_1*3/4, 0.0})}, 
               vector<double>{2,3}, vector<double>{1.18, 1.18});
             arm_1_state = TRANSFER;
           }
           else if(des_1==2){
-            if(count_1==0)
+            if(count_1==0){
+              desk_hand_1_2_pose[0] -= x_r_1;
+              desk_hand_1_1_pose[0] -= x_r_1;
+              desk_hand_1_1_pose[1] -= y_r_1;
+              desk_hand_1_2_pose[1] -= y_r_1;
               send_arm_to_state_n(arm_1_joint_trajectory_publisher_, 
-                vector<vector<double>>{desk_hand_1_1, desk_hand_1_2},
-                vector<double>{0.5,0.8}, vector<double>{0,0}), count_1++;
+                vector<vector<double>>{invkinematic(desk_hand_1_1_pose), invkinematic(desk_hand_1_2_pose)},
+                vector<double>{0.5,0.8}, vector<double>{0,0});
+              desk_hand_1_2_pose[0] += x_r_1;
+              desk_hand_1_1_pose[0] += x_r_1;
+              desk_hand_1_1_pose[1] += y_r_1;
+              desk_hand_1_2_pose[1] += y_r_1;
+              count_1++;
+            }
             else{
-              if(reached(arm_1_joint, desk_hand_1_2) && fabs(arm_1_linear) <= 4e-3){
+              if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear) <= 4e-3){
                 close_gripper(1);
                 send_arm_to_state(arm_1_joint_trajectory_publisher_, desk_hand_1_3, 0.4, 0.0);
                 count_1=0;
@@ -709,7 +729,7 @@ public:
       refum1:
       dx = dx_1, dy=dy_1;dir=dir_1;
       if(dx<-0.5){
-        dx=-0.08; dy=-0.24; dir=true;
+        dx=-0.08; dy=-0.24; dir=true; fum_1_init=true;
       }
       else{
         dx += dir ? 0.06 : -0.06;
@@ -728,7 +748,7 @@ public:
       refum2:
       dx = dx_2, dy=dy_2;dir=dir_2;
       if(dx<-.5){
-        dx=-0.08; dy=-0.24; dir=true;
+        dx=-0.08; dy=-0.24; dir=true; fum_2_init=true;
       }
       else{
         dx += dir ? 0.06 : -0.06;
@@ -756,11 +776,11 @@ public:
       //auto p1 = invkinematic(vector<double>{-x+dx, dy, z+0.05});
       if(fum_1_init)
         send_arm_to_state_n(arm_1_joint_trajectory_publisher_, vector<vector<double>>{p1,p2,p2,p3}, 
-          vector<double>{1.0, 1.5, 1.6, 2}, 
+          vector<double>{1.0, 1.4, 1.6, 2}, 
           vector<double>{y - arm_1_zero, y - arm_1_zero, y - arm_1_zero, y - arm_1_zero});
       else
         send_arm_to_state_n(arm_1_joint_trajectory_publisher_, vector<vector<double>>{p1,p2,p2,p3}, 
-          vector<double>{0.2, 0.35, 0.55, 0.7}, 
+          vector<double>{0.2, 0.6, 0.8, 0.9}, 
           vector<double>{y - arm_1_zero, y - arm_1_zero, y - arm_1_zero, y - arm_1_zero});
       fum_1_init=false;
     }
@@ -780,7 +800,7 @@ public:
            vector<double>{y - arm_2_zero, y - arm_2_zero, y - arm_2_zero, y - arm_2_zero});
       else
         send_arm_to_state_n(arm_2_joint_trajectory_publisher_, vector<vector<double>>{p1,p2,p2,p3}, 
-          vector<double>{0.2, 0.35, 0.55, 0.7}, 
+          vector<double>{0.2, 0.6, 0.8, 0.9}, 
           vector<double>{y - arm_2_zero, y - arm_2_zero, y - arm_2_zero, y - arm_2_zero});
       fum_2_init=false;
     }
@@ -848,10 +868,13 @@ public:
           // cout<<"fetching from shelf"<<endl;
           if(count_2<2){
             send_arm_to_state_n(arm_2_joint_trajectory_publisher_, vector<vector<double>>{
-              desk_hand_2_0, desk_hand_2_4, desk_hand_2_5, desk_hand_2_6, desk_hand_2_7, desk_hand_2_8,
-              desk_hand_2_9, desk_hand_2_10, desk_hand_2_11, desk_hand_2_12
-            }, vector<double>{1, 1.5, 1.8, 2.1, 2.4, 2.7, 3.0, 3.3, 3.6, 3.9}, 
-            vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+              desk_hand_2_2, desk_hand_2_4, desk_hand_2_4, 
+              desk_hand_2_5, desk_hand_2_6, desk_hand_2_6, 
+              desk_hand_2_7, desk_hand_2_8, desk_hand_2_8,
+              desk_hand_2_9, desk_hand_2_10, desk_hand_2_10, 
+              desk_hand_2_11, desk_hand_2_12, desk_hand_2_12
+            }, vector<double>{0.7, 1.2, 1.4, 1.8, 2.1, 2.3, 2.7, 3.0, 3.2, 3.6, 3.9, 4.1, 4.5, 4.7, 4.9}, 
+            vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,0.0, 0.0, 0.0, 0.0, 0.0, 0.0,0.0,0.0});
             count_2+=2;
           }
           else{
@@ -862,7 +885,7 @@ public:
               trans_1=false;
             }
             count_2++;
-            if(count_2>200){
+            if(count_2>250){
               count_2=1;
               break;
             }
@@ -1038,12 +1061,25 @@ public:
             arm_2_state=TRANSFER;
           }
           else if(des_2==2){
-            if(count_2==0)
+            if(count_2==0){
+              // send_arm_to_state_n(arm_2_joint_trajectory_publisher_, 
+              //   vector<vector<double>>{desk_hand_2_1, desk_hand_2_2},
+              //   vector<double>{0.5,0.8}, vector<double>{0,0});
+              desk_hand_2_2_pose[0] -= x_r_1;
+              desk_hand_2_1_pose[0] -= x_r_1;
+              desk_hand_2_1_pose[1] += y_r_1;
+              desk_hand_2_2_pose[1] += y_r_1;
               send_arm_to_state_n(arm_2_joint_trajectory_publisher_, 
-                vector<vector<double>>{desk_hand_2_1, desk_hand_2_2},
-                vector<double>{0.5,0.8}, vector<double>{0,0}), count_2++;
+                vector<vector<double>>{invkinematic(desk_hand_2_1_pose), invkinematic(desk_hand_2_2_pose)},
+                vector<double>{0.5,0.8}, vector<double>{0,0});
+              desk_hand_2_2_pose[0] += x_r_1;
+              desk_hand_2_1_pose[0] += x_r_1;
+              desk_hand_2_1_pose[1] -= y_r_1;
+              desk_hand_2_2_pose[1] -= y_r_1;
+              count_2++;
+            }
             else{
-              if(reached(arm_2_joint, desk_hand_2_2) && fabs(arm_2_linear) <= 4e-3){
+              if(reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear) <= 4e-3){
                 close_gripper(2);
                 send_arm_to_state(arm_2_joint_trajectory_publisher_, desk_hand_2_3, 0.4, 0.0);
                 count_2=0;
@@ -1317,14 +1353,14 @@ public:
       //cout << atan2(2*(x*w+y*z), 1-2*(z*z+w*w))<<" "<<endl;
 
       if(item.pose.position.y > 0) {
-        divx_1 = - item.pose.position.z - 0.05;
+        divx_1 = item.pose.position.z + 0.05;
         divy_1 = - item.pose.position.y + 0.17;
         theta_1 = 6.28318530718 - atan2(2*(x*w+y*z), 1-2*(z*z+w*w));
         //if(theta_1>2*PI) theta_1 -= 2*PI;
         type_1 = type2int(item.type);
       }
       else{
-        divx_2 = - item.pose.position.z - 0.05;
+        divx_2 = item.pose.position.z + 0.05;
         divy_2 =   item.pose.position.y + 0.17;
         theta_2 = 6.28318530718 - atan2(2*(x*w+y*z), 1-2*(z*z+w*w));
         type_2 = type2int(item.type);
@@ -1392,10 +1428,10 @@ public:
         if(height<0.005) type = PISTON_ROD;  //piston
         else if(height<0.01) type = GEAR;  //gear
         else if(height<0.016) type = GASKET; //gasket
-        else if(height<0.021) type = DISC; //disc
+        else if(height<0.025) type = DISC; //disc
         else type = PULLEY;
         events.emplace_back(stime, type);
-        // cout<<type<<"--"<<endl;
+         cout<<type<<"--"<<endl;
         
       }
       height = 0.0;
@@ -1588,8 +1624,11 @@ private:
 
   const vector<double> desk_hand_1_0 = invkinematic(vector<double>{-0.02, 0.92, 0.4});
 
+
+  vector<double> desk_hand_1_1_pose {-0.02, 0.92, 0.18};
+  vector<double> desk_hand_1_2_pose {-0.02, 0.92, 0.1};
+
   const vector<double> desk_hand_1_1 = invkinematic(vector<double>{-0.02, 0.92, 0.18});
-  // const vector<double> desk_hand_1_2 = invkinematic(vector<double>{-0.02, 0.92, 0.075});
   const vector<double> desk_hand_1_2 = invkinematic(vector<double>{-0.02, 0.92, 0.1});
   const vector<double> desk_hand_1_3 = invkinematic(vector<double>{-0.02, 0.72, 0.30});
   const vector<double> desk_hand_1_4 = invkinematic(vector<double>{-0.02, 0.92, -0.04});
@@ -1614,6 +1653,9 @@ private:
   // const vector<double> desk_hand_1_20=invkinematic(vector<double>{0.2, 0.91, -0.04});
   
   const vector<double> desk_hand_2_0=invkinematic(vector<double>{-0.02, -0.92, 0.4});  
+
+  vector<double> desk_hand_2_1_pose {-0.02, -0.92, 0.18};
+  vector<double> desk_hand_2_2_pose {-0.02, -0.92, 0.1};
 
   const vector<double> desk_hand_2_1=invkinematic(vector<double>{-0.02, -0.92, 0.18});
   const vector<double> desk_hand_2_2=invkinematic(vector<double>{-0.02, -0.92, 0.1});
@@ -1714,17 +1756,6 @@ int main(int argc, char ** argv) {
     "/ariac/arm2/joint_states", 10,
     &MyCompetitionClass::arm_2_joint_state_callback, &comp_class);
 
-  // %Tag(SUB_FUNC)%
-  // Subscribe to the '/ariac/proximity_sensor_1' topic.
-  // ros::Subscriber proximity_sensor_subscriber = node.subscribe(
-  //   "/ariac/proximity_sensor_1", 10, proximity_sensor_callback);
-  // %EndTag(SUB_FUNC)%
-
-  // Subscribe to the '/ariac/break_beam_1_change' topic.
-  // ros::Subscriber break_beam_subscriber = node.subscribe(
-  //   "/ariac/break_beam_1_change", 10,
-  //   &MyCompetitionClass::break_beam_callback, &comp_class);
-
   // Subscribe to the '/ariac/logical_camera_1' topic.
   ros::Subscriber logical_camera_subscriber = node.subscribe(
     "/ariac/logical_camera_0", 10,
@@ -1733,9 +1764,6 @@ int main(int argc, char ** argv) {
   // Subscribe to the '/ariac/laser_profiler_1' topic.
   
   //TODO:DECISION
-
-  // ros::Subscriber laser_profiler_subscriber = node.subscribe(
-  //   "/ariac/laser_profiler_1", 10, laser_profiler_callback);  
 
   ros::Subscriber laser_profiler_subscriber = node.subscribe(
     "/ariac/laser_profiler_1", 10, 

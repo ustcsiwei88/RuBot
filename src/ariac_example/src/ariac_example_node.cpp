@@ -45,8 +45,8 @@
 
 #include <trajectory_msgs/JointTrajectory.h>
 
-
-
+#define PI_2 6.283185307179586
+#define PI 3.141592653589793
 
 
 // %EndTag(INCLUDE_STATEMENTS)%
@@ -237,7 +237,13 @@ public:
         y = item2.orientation.y;
         z = item2.orientation.z;
         w = item2.orientation.w;
-        tmp->theta.push_back(atan2(2*(x*w+y*z), 1-2*(z*z+w*w)));
+        if(n==1){
+          tmp->theta.push_back(atan2(2*(z*w+y*x), 1-2*(z*z+y*y)));
+          // cout<<" type, "<<item1.type<<"  angle "<<*tmp->theta.rbegin()<<endl;
+        }
+        else{
+          tmp->theta.push_back(-atan2(2*(z*w+y*x), 1-2*(z*z+y*y)));
+        }
       }
       tmp->finished.resize(tmp->position.size(),false);
 
@@ -538,7 +544,7 @@ public:
         }
         if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3){
           count_1++;
-          if(count_1==3){     //wait around 0.1s for classification
+          if(count_1==5){     //wait around 0.1s for classification
             bin_type[bin_num_1] = type_1;
             des_1 = -1;
             x_r_1 = divx_1;
@@ -550,10 +556,17 @@ public:
                   des_1 = 1;
                   count_1 = 0;
                   x_d_1 = shipments_1[0].position[i].first;
-                  
                   y_d_1 = shipments_1[0].position[i].second;
-                  
+                  // cout<<shipments_1[0].theta[i] <<" ---=-=-=---- "<<theta_1<<endl;
+                  dtheta_1 = shipments_1[0].theta[i] - theta_1;
+                  cout<<"theta_1 :"<<theta_1 <<" thetai"<<shipments_1[0].theta[i]<<endl;
+                  while(dtheta_1 > PI) dtheta_1 -= PI_2;
+                  while(dtheta_1 <= -PI) dtheta_1 += PI_2;
 
+                  double tx_r_1 = cos(dtheta_1) * x_r_1 - sin(dtheta_1) * y_r_1;
+                  double ty_r_1 = cos(dtheta_1) * y_r_1 + sin(dtheta_1) * x_r_1;
+                  x_r_1 = tx_r_1;
+                  y_r_1 = ty_r_1;
                   ship_id_1 = i;
 
                   break;
@@ -589,16 +602,31 @@ public:
           // start[2]+=0.17;
 
           if(des_1==1){
+
             // send_arm_to_state_n(arm_1_joint_trajectory_publisher_, 
             //   vector<vector<double>>{
             //     classify2bpos_1, 
             //     invkinematic(vector<double>{0.001+ /*x_r_1 - */x_d_1*3/4, -1.1+/*y_r_1-*/y_d_1*3/4, 0.2}), 
             //     invkinematic(vector<double>{0.001+ /*x_r_1 - */x_d_1*3/4, -1.1+/*y_r_1-*/y_d_1*3/4, 0.0})}, 
             //   vector<double>{1,2,3}, vector<double>{0.5 , 1.18, 1.18});
+
+            // arm limitation
+            if(-1.05 + y_d_1 - y_r_1 < -1.29) y_r_1 = 1.29-1.05 + y_d_1;
+            auto p1 = invkinematic(vector<double>{0.00001 + x_d_1 - x_r_1, -1.05 + y_d_1 - y_r_1, -0.0});
+            auto p2 = invkinematic(vector<double>{0.00001 + x_d_1 - x_r_1, -1.05 + y_d_1 - y_r_1, -0.1});
+            p1[5] -= dtheta_1;
+            // cout<<y_d_1 << " =-=-=-= "<<y_r_1<<endl;
+            // for(auto w:vector<double>{0.00001 + x_d_1 - x_r_1, -1.05 + y_d_1 - y_r_1, 0.1}){
+            //     cout<<w<<"----\n";
+            // }
+            // for(auto w:p1){
+            //     cout<<w<<"===\n";
+            // }
+            while(p1[5]>PI) p1[5]-=PI_2;
+            while(p1[5]<=-PI) p1[5]+=PI_2;
+            p2[5]=p1[5];
             send_arm_to_state_n(arm_1_joint_trajectory_publisher_, 
-              vector<vector<double>>{
-                invkinematic(vector<double>{0.0001 /*x_r_1  */ + x_d_1*3/4, -1.2 /*y_r_1*/ + y_d_1*3/4, 0.2}), 
-                invkinematic(vector<double>{0.0001 /*x_r_1  */ + x_d_1*3/4, -1.2 /*y_r_1*/ + y_d_1*3/4, 0.0})}, 
+              vector<vector<double>>{p1,p2},
               vector<double>{2,3}, vector<double>{1.18, 1.18});
             arm_1_state = TRANSFER;
           }
@@ -990,10 +1018,11 @@ public:
         
         if(reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear - arm_2_linear_goal) <= 4e-3){
           count_2++;
-          if(count_2==3){     //wait around 0.1s for classification
+          if(count_2==5){     //wait around 0.1s for classification
             bin_type[bin_num_2] = type_2;
             des_2 = 0;
-            
+            x_r_2 = divx_2;
+            y_r_2 = divy_2;
             if(shipments_2.size()>0){
 
               for(int i=0;i<shipments_2[0].obj_t.size();i++){
@@ -1003,9 +1032,16 @@ public:
                   des_2 = 1;
                   count_2 = 0;
                   x_d_2 = shipments_2[0].position[i].first;
-                  x_r_2 = divx_2;
                   y_d_2 = shipments_2[0].position[i].second;
-                  y_r_2 = divy_2;
+                  
+                  dtheta_2 = shipments_2[0].theta[i] - theta_2;
+                  while(dtheta_2 > PI) dtheta_2 -= PI_2;
+                  while(dtheta_2 <= -PI) dtheta_2 += PI_2;
+
+                  double tx_r_2 = cos(dtheta_2) * x_r_2 + sin(dtheta_2) * y_r_2;
+                  double ty_r_2 = cos(dtheta_2) * y_r_2 - sin(dtheta_2) * x_r_2;
+                  x_r_2 = tx_r_2;
+                  y_r_2 = ty_r_2;
 
                   ship_id_2 = i;
                   break;
@@ -1040,23 +1076,16 @@ public:
           //auto start = kinematic(arm_2_joint);
           //start[2]+=0.17;
           // cout<<"des2 is "<< des_2<<endl;
-          if(des_2==1){
-            // cout<<x_r_2<< " ---" <<x_d_2<<"----"<< y_r_2 <<"-----"<<y_d_2<<endl;
-            // for(auto tmp: invkinematic(vector<double>{0.001+x_r_2-x_d_2, 1.1+y_r_2-y_d_2, 0.2})){
-            //   cout<<tmp<<" -----";
-            // }
-            // cout<<endl;
-            
-            // send_arm_to_state_n(arm_2_joint_trajectory_publisher_, 
-            //   vector<vector<double>>{
-            //     classify2bpos_2, 
-            //     invkinematic(vector<double>{0.001+/*x_r_2-*/x_d_2*3/4, 1.1+/*y_r_2-*/y_d_2*3/4, 0.2}), 
-            //     invkinematic(vector<double>{0.001+/*x_r_2-*/x_d_2*3/4, 1.1+/*y_r_2-*/y_d_2*3/4, 0.0})}, 
-            //   vector<double>{1, 2, 3}, vector<double>{-0.5 , -1.18, -1.18});
+          if(des_2==1){            
+            if(1.05 - y_d_2 - y_r_2 >1.29) y_r_2 = 1.05-1.29-y_d_2;
+            auto p1 = invkinematic(vector<double>{0.00001 - x_d_2 - x_r_2, 1.05 - y_d_2 - y_r_2, -0.0});
+            auto p2 = invkinematic(vector<double>{0.00001 - x_d_2 - x_r_2, 1.05 - y_d_2 - y_r_2, -0.05}); 
+            p1[5] -= dtheta_2;
+            while(p1[5]>PI) p1[5]-=PI_2;
+            while(p1[5]<=-PI) p1[5]+=PI_2;
+            p2[5]=p1[5];
             send_arm_to_state_n(arm_2_joint_trajectory_publisher_, 
-              vector<vector<double>>{
-                invkinematic(vector<double>{0.001+/*x_r_2-*/x_d_2*3/4, 1.1+/*y_r_2-*/y_d_2*3/4, 0.2}), 
-                invkinematic(vector<double>{0.001+/*x_r_2-*/x_d_2*3/4, 1.1+/*y_r_2-*/y_d_2*3/4, 0.0})}, 
+              vector<vector<double>>{p1,p2},
               vector<double>{2, 3}, vector<double>{-1.18, -1.18});
             arm_2_state=TRANSFER;
           }
@@ -1065,6 +1094,7 @@ public:
               // send_arm_to_state_n(arm_2_joint_trajectory_publisher_, 
               //   vector<vector<double>>{desk_hand_2_1, desk_hand_2_2},
               //   vector<double>{0.5,0.8}, vector<double>{0,0});
+
               desk_hand_2_2_pose[0] -= x_r_1;
               desk_hand_2_1_pose[0] -= x_r_1;
               desk_hand_2_1_pose[1] += y_r_1;
@@ -1340,11 +1370,17 @@ public:
     for(auto item: image_msg->models){
       // cout << item.pose.position<<endl;    // x -> z , y->y, z -> -x
       // cout << item.pose.orientation<<endl;
+      // for(auto w:{item.pose.orientation.x,item.pose.orientation.y,
+      //   item.pose.orientation.z, item.pose.orientation.w}){
+      //   cout<<w<<" ^^ ";
+      // }
+      cout<<endl;
       tf2::Quaternion tmp1(item.pose.orientation.x,item.pose.orientation.y,
         item.pose.orientation.z, item.pose.orientation.w);
       // tf2::Quaternion tmp2(image_msg->pose.orientation.x, image_msg->pose.orientation.y, 
       //   image_msg->pose.orientation.z, image_msg->pose.orientation.w);
-      auto ori = tmp1*q_logical;
+      auto ori = q_logical*tmp1;
+      ori.normalize();
       // auto & ori = item.pose.orientation;
       double x = ori.x(), y= ori.y(), z = ori.z(), w = ori.w();
       // cout<<x<<" "<<y<<" "<<z<<" "<<w<<endl;
@@ -1355,14 +1391,15 @@ public:
       if(item.pose.position.y > 0) {
         divx_1 = item.pose.position.z + 0.05;
         divy_1 = - item.pose.position.y + 0.17;
-        theta_1 = 6.28318530718 - atan2(2*(x*w+y*z), 1-2*(z*z+w*w));
-        //if(theta_1>2*PI) theta_1 -= 2*PI;
+        theta_1 = -atan2(2*(z*w+y*x), 1-2*(z*z+y*y));
+        // theta_1 = - theta_1;
+        // cout<<theta_1<<"---------------"<<endl;
         type_1 = type2int(item.type);
       }
       else{
         divx_2 = item.pose.position.z + 0.05;
         divy_2 =   item.pose.position.y + 0.17;
-        theta_2 = 6.28318530718 - atan2(2*(x*w+y*z), 1-2*(z*z+w*w));
+        theta_2 = atan2(2*(z*w+y*x), 1-2*(z*z+y*y));
         type_2 = type2int(item.type);
       }
     }
@@ -1431,7 +1468,7 @@ public:
         else if(height<0.025) type = DISC; //disc
         else type = PULLEY;
         events.emplace_back(stime, type);
-         cout<<type<<"--"<<endl;
+         // cout<<type<<"--"<<endl;
         
       }
       height = 0.0;
@@ -1564,9 +1601,9 @@ public:
     if(!srv.response.success){
       ROS_ERROR_STREAM("Gripper Failed");
     }
-    else{
-      ROS_INFO("Gripper closed");
-    }
+    // else{
+    //   ROS_INFO("Gripper closed");
+    // }
 
   }
 
@@ -1710,6 +1747,7 @@ private:
 
   vector<int> bin_type;
 
+  double dtheta_1, dtheta_2;
 };
 
 void proximity_sensor_callback(const sensor_msgs::Range::ConstPtr & msg) {

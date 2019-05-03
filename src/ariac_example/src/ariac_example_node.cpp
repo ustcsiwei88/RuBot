@@ -1119,10 +1119,10 @@ public:
               //   vector<vector<double>>{desk_hand_2_1, desk_hand_2_2},
               //   vector<double>{0.5,0.8}, vector<double>{0,0});
 
-              desk_hand_2_2_pose[0] -= x_r_1;
-              desk_hand_2_1_pose[0] -= x_r_1;
-              desk_hand_2_1_pose[1] += y_r_1;
-              desk_hand_2_2_pose[1] += y_r_1;
+              desk_hand_2_2_pose[0] -= x_r_2;
+              desk_hand_2_1_pose[0] -= x_r_2;
+              desk_hand_2_1_pose[1] += y_r_2;
+              desk_hand_2_2_pose[1] += y_r_2;
               send_arm_to_state_n(arm_2_joint_trajectory_publisher_, 
                 vector<vector<double>>{invkinematic(desk_hand_2_1_pose), invkinematic(desk_hand_2_2_pose)},
                 vector<double>{0.5,0.8}, vector<double>{0,0});
@@ -1136,10 +1136,10 @@ public:
                   vector<vector<double>>{invkinematic(desk_hand_2_2_pose), desk_hand_2_3}, 
                   vector<double>{0.2, 0.6}, 
                   vector<double>{0.0, 0.0});
-                desk_hand_2_2_pose[0] += x_r_1;
-                desk_hand_2_1_pose[0] += x_r_1;
-                desk_hand_2_1_pose[1] -= y_r_1;
-                desk_hand_2_2_pose[1] -= y_r_1;
+                desk_hand_2_2_pose[0] += x_r_2;
+                desk_hand_2_1_pose[0] += x_r_2;
+                desk_hand_2_1_pose[1] -= y_r_2;
+                desk_hand_2_2_pose[1] -= y_r_2;
                 count_2=0;
                 trans_2=true;
                 arm_2_state = IDLE;

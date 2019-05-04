@@ -202,7 +202,7 @@ public:
   }
   /// Called when a new Order message is received.
   void order_callback(const osrf_gear::Order::ConstPtr & order_msg) {
-    ROS_INFO_STREAM("Received order:\n" << *order_msg);
+    // ROS_INFO_STREAM("Received order:\n" << *order_msg);
     // Order tmp;
     //received_orders_.resize(received_orders_.size()+1);
     // Order * tmp;
@@ -641,6 +641,10 @@ public:
           }
           else if(des_1==2){
             if(count_1==0){
+              // if(type_1==PISTON_ROD){
+              //   x_r_1*=0.8;
+              //   y_r_1*=0.8;
+              // }
               desk_hand_1_2_pose[0] -= x_r_1;
               desk_hand_1_1_pose[0] -= x_r_1;
               desk_hand_1_1_pose[1] -= y_r_1;
@@ -648,23 +652,23 @@ public:
               send_arm_to_state_n(arm_1_joint_trajectory_publisher_, 
                 vector<vector<double>>{invkinematic(desk_hand_1_1_pose), invkinematic(desk_hand_1_2_pose)},
                 vector<double>{0.5,0.8}, vector<double>{0,0});
-              
+              desk_hand_1_2_pose[0] += x_r_1;
+              desk_hand_1_1_pose[0] += x_r_1;
+              desk_hand_1_1_pose[1] += y_r_1;
+              desk_hand_1_2_pose[1] += y_r_1;
               count_1++;
             }
             else{
               if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear) <= 4e-3){
                 close_gripper(1);
                 send_arm_to_state_n(arm_1_joint_trajectory_publisher_, 
-                  vector<vector<double>>{invkinematic(desk_hand_1_2_pose), desk_hand_1_3}, 
+                  vector<vector<double>>{arm_1_joint_goal, desk_hand_1_3}, 
                   vector<double>{0.2,0.6}, 
                   vector<double>{0.0,0.0});
                 count_1=0;
                 arm_1_state = IDLE;
                 trans_1=true;
-                desk_hand_1_2_pose[0] += x_r_1;
-                desk_hand_1_1_pose[0] += x_r_1;
-                desk_hand_1_1_pose[1] += y_r_1;
-                desk_hand_1_2_pose[1] += y_r_1;
+                
               }
             }
           }
@@ -1118,7 +1122,10 @@ public:
               // send_arm_to_state_n(arm_2_joint_trajectory_publisher_, 
               //   vector<vector<double>>{desk_hand_2_1, desk_hand_2_2},
               //   vector<double>{0.5,0.8}, vector<double>{0,0});
-
+              // if(type_2==PISTON_ROD){
+              //   x_r_2*=0.8;
+              //   y_r_2*=0.8;
+              // }
               desk_hand_2_2_pose[0] -= x_r_2;
               desk_hand_2_1_pose[0] -= x_r_2;
               desk_hand_2_1_pose[1] += y_r_2;
@@ -1126,20 +1133,19 @@ public:
               send_arm_to_state_n(arm_2_joint_trajectory_publisher_, 
                 vector<vector<double>>{invkinematic(desk_hand_2_1_pose), invkinematic(desk_hand_2_2_pose)},
                 vector<double>{0.5,0.8}, vector<double>{0,0});
-              
+              desk_hand_2_2_pose[0] += x_r_2;
+              desk_hand_2_1_pose[0] += x_r_2;
+              desk_hand_2_1_pose[1] -= y_r_2;
+              desk_hand_2_2_pose[1] -= y_r_2;
               count_2++;
             }
             else{
               if(reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear) <= 4e-3){
                 close_gripper(2);
                 send_arm_to_state_n(arm_2_joint_trajectory_publisher_, 
-                  vector<vector<double>>{invkinematic(desk_hand_2_2_pose), desk_hand_2_3}, 
+                  vector<vector<double>>{invkinematic(arm_2_joint_goal), desk_hand_2_3}, 
                   vector<double>{0.2, 0.6}, 
                   vector<double>{0.0, 0.0});
-                desk_hand_2_2_pose[0] += x_r_2;
-                desk_hand_2_1_pose[0] += x_r_2;
-                desk_hand_2_1_pose[1] -= y_r_2;
-                desk_hand_2_2_pose[1] -= y_r_2;
                 count_2=0;
                 trans_2=true;
                 arm_2_state = IDLE;

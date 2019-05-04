@@ -1143,7 +1143,7 @@ public:
               if(reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear) <= 4e-3){
                 close_gripper(2);
                 send_arm_to_state_n(arm_2_joint_trajectory_publisher_, 
-                  vector<vector<double>>{invkinematic(arm_2_joint_goal), desk_hand_2_3}, 
+                  vector<vector<double>>{arm_2_joint_goal, desk_hand_2_3}, 
                   vector<double>{0.2, 0.6}, 
                   vector<double>{0.0, 0.0});
                 count_2=0;

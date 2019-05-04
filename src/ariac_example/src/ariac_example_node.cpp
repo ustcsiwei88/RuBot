@@ -554,7 +554,7 @@ public:
         }
         if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3){
           count_1++;
-          if(count_1==15){     //wait around 0.3s for classification
+          if(count_1==20){     //wait around 0.4s for classification
             bin_type[bin_num_1] = type_1;
             des_1 = -1;
             x_r_1 = divx_1;
@@ -734,9 +734,9 @@ public:
           // send_arm_to_state(arm_2_joint_trajectory_publisher_, rest_joints, 
           //   0.5, 0);
 
-          //wait 0.26 sec to drop
+          //wait 0.4 sec to drop
           if(des_1 == 1){
-            if(count_1 == 13){
+            if(count_1 == 20){
               if(faul_1){
                 cout<<"caught faulty product"<<endl;
                 arm_1_state = FAULTY;
@@ -1095,7 +1095,7 @@ public:
         
         if(reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear - arm_2_linear_goal) <= 4e-3){
           count_2++;
-          if(count_2==15){     //wait around 0.3s for classification
+          if(count_2==20){     //wait around 0.4s for classification
             bin_type[bin_num_2] = type_2;
             des_2 = 0;
             x_r_2 = divx_2;
@@ -1156,7 +1156,7 @@ public:
           if(des_2==1){            
             if(1.05 - y_d_2 + y_r_2 >1.29) y_r_2 = -1.05+1.29+y_d_2;
             auto p1 = invkinematic(vector<double>{0.00001 - x_d_2 - x_r_2, 1.05 - y_d_2 + y_r_2, -0.0});
-            auto p2 = invkinematic(vector<double>{0.00001 - x_d_2 - x_r_2, 1.05 - y_d_2 + y_r_2, -0.05}); 
+            auto p2 = invkinematic(vector<double>{0.00001 - x_d_2 - x_r_2, 1.05 - y_d_2 + y_r_2, -0.1}); 
             p1[5] -= dtheta_2;
             while(p1[5]>PI) p1[5]-=PI_2;
             while(p1[5]<=-PI) p1[5]+=PI_2;
@@ -1258,9 +1258,9 @@ public:
           arm_2_state = IDLE;
 
           if(des_2 == 1){
-            if(count_2 == 13){
+            if(count_2 == 20){
               if(faul_2){
-                cout<<"caught faulty prodcut"<<endl;
+                cout<<"caught faulty product"<<endl;
                 arm_2_state = FAULTY;
                 count_2=0;
                 break;
@@ -1282,12 +1282,12 @@ public:
         if(count_2==0){
           if(reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear - arm_2_linear_goal) <= 4e-3){
             open_gripper(2);
-            auto p1 = invkinematic(vector<double>{0.00001 + faul_2_x, -1.05 - faul_2_y, -0.1});
-            auto p2 = invkinematic(vector<double>{0.00001 + faul_2_x, -1.05 - faul_2_y, -0.23});
-            auto p3 = invkinematic(vector<double>{0.00001 + faul_2_x, -1.05 - faul_2_y, -0.06});
+            auto p1 = invkinematic(vector<double>{0.00001 + faul_2_x, 1.05 - faul_2_y, -0.1});
+            auto p2 = invkinematic(vector<double>{0.00001 + faul_2_x, 1.05 - faul_2_y, -0.23});
+            auto p3 = invkinematic(vector<double>{0.00001 + faul_2_x, 1.05 - faul_2_y, -0.06});
             
             send_arm_to_state_n(
-              arm_1_joint_trajectory_publisher_, 
+              arm_2_joint_trajectory_publisher_, 
               vector<vector<double>>{p1,p2,p2,p3},
               vector<double>{0.45, 0.9, 1.3, 1.7}, vector<double>{-1.18,-1.18,-1.18,-1.18}
               );
@@ -1531,7 +1531,7 @@ public:
       }
       else{
         divx_2 = item.pose.position.z + 0.05;
-        divy_2 =   item.pose.position.y + 0.17;
+        divy_2 = item.pose.position.y + 0.17;
         theta_2 = atan2(2*(z*w+y*x), 1-2*(z*z+y*y));
         type_2 = type2int(item.type);
       }

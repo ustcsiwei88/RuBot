@@ -67,7 +67,8 @@ enum State{
   FUMBLE,
   CLASSIFY,
   TRANSFER,
-  TRANSIT
+  TRANSIT,
+  FAULTY
 };
 
 enum PType{
@@ -553,7 +554,7 @@ public:
         }
         if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3){
           count_1++;
-          if(count_1==5){     //wait around 0.1s for classification
+          if(count_1==15){     //wait around 0.3s for classification
             bin_type[bin_num_1] = type_1;
             des_1 = -1;
             x_r_1 = divx_1;
@@ -733,9 +734,15 @@ public:
           // send_arm_to_state(arm_2_joint_trajectory_publisher_, rest_joints, 
           //   0.5, 0);
 
-          //wait 0.2 sec to drop
+          //wait 0.26 sec to drop
           if(des_1 == 1){
-            if(count_1 == 10){
+            if(count_1 == 13){
+              if(faul_1){
+                cout<<"caught faulty product"<<endl;
+                arm_1_state = FAULTY;
+                count_1=0;
+                break;
+              }
               shipments_1[0].finished[ship_id_1]=true;
               count_1=0;
               arm_1_state = IDLE;
@@ -746,6 +753,48 @@ public:
             }
           }
           // send_arm_to_zero_state(arm_2_joint_trajectory_publisher_);
+        }
+        break;
+      case FAULTY:
+        if(count_1==0){
+          if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3){
+            open_gripper(1);
+            auto p1 = invkinematic(vector<double>{0.00001 + faul_1_x, -1.05 + faul_1_y, -0.1});
+            auto p2 = invkinematic(vector<double>{0.00001 + faul_1_x, -1.05 + faul_1_y, -0.23});
+            auto p3 = invkinematic(vector<double>{0.00001 + faul_1_x, -1.05 + faul_1_y, -0.06});
+            
+            send_arm_to_state_n(
+              arm_1_joint_trajectory_publisher_, 
+              vector<vector<double>>{p1,p2,p2,p3},
+              vector<double>{0.45, 0.9, 1.3, 1.7}, vector<double>{1.18,1.18,1.18,1.18}
+              );
+            count_1++;
+          }
+        }
+        else if(count_1==1){
+          if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3){
+            if(catched_1){
+              send_arm_to_state_n(
+                arm_1_joint_trajectory_publisher_,
+                vector<vector<double>>{throw_1_1, throw_1_2},
+                vector<double>{0.4, 0.6}, vector<double>{0.9, 0.9}
+                );
+              count_1++;
+              break;
+            }
+            count_1=0;
+          }
+        }
+        else{
+          if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3){
+            close_gripper(1);
+            count_1++;
+            if(count_1==12){ // ~0.2 sec to throw it
+              arm_1_state=IDLE;
+              count_1=0;
+            }
+            break;
+          }
         }
         break;
     }
@@ -1046,7 +1095,7 @@ public:
         
         if(reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear - arm_2_linear_goal) <= 4e-3){
           count_2++;
-          if(count_2==5){     //wait around 0.1s for classification
+          if(count_2==15){     //wait around 0.3s for classification
             bin_type[bin_num_2] = type_2;
             des_2 = 0;
             x_r_2 = divx_2;
@@ -1207,8 +1256,15 @@ public:
         if(reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear - arm_2_linear_goal) <= 4e-3){
           close_gripper(2);
           arm_2_state = IDLE;
+
           if(des_2 == 1){
-            if(count_2 == 10){
+            if(count_2 == 13){
+              if(faul_2){
+                cout<<"caught faulty prodcut"<<endl;
+                arm_2_state = FAULTY;
+                count_2=0;
+                break;
+              }
               shipments_2[0].finished[ship_id_2]=true;
               count_2=0;
               arm_2_state=IDLE;
@@ -1222,7 +1278,48 @@ public:
           //   0.5, 0);
         }
         break;
-
+      case FAULTY:
+        if(count_2==0){
+          if(reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear - arm_2_linear_goal) <= 4e-3){
+            open_gripper(2);
+            auto p1 = invkinematic(vector<double>{0.00001 + faul_2_x, -1.05 - faul_2_y, -0.1});
+            auto p2 = invkinematic(vector<double>{0.00001 + faul_2_x, -1.05 - faul_2_y, -0.23});
+            auto p3 = invkinematic(vector<double>{0.00001 + faul_2_x, -1.05 - faul_2_y, -0.06});
+            
+            send_arm_to_state_n(
+              arm_1_joint_trajectory_publisher_, 
+              vector<vector<double>>{p1,p2,p2,p3},
+              vector<double>{0.45, 0.9, 1.3, 1.7}, vector<double>{-1.18,-1.18,-1.18,-1.18}
+              );
+            count_2++;
+          }
+        }
+        else if(count_2==1){
+          if(reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear - arm_2_linear_goal) <= 4e-3){
+            if(catched_2){
+              send_arm_to_state_n(
+                arm_2_joint_trajectory_publisher_,
+                vector<vector<double>>{throw_2_1, throw_2_2},
+                vector<double>{0.4, 0.6}, vector<double>{-0.9, -0.9}
+                );
+              count_2++;
+              break;
+            }
+            count_2=0;
+          }
+        }
+        else{
+          if(reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear - arm_2_linear_goal) <= 4e-3){
+            close_gripper(1);
+            count_2++;
+            if(count_2==12){ // ~0.2 sec to throw it
+              arm_2_state=IDLE;
+              count_2=0;
+            }
+            break;
+          }
+        }
+        break;
     }
 
 
@@ -1642,7 +1739,34 @@ public:
     // }
 
   }
-
+  bool faul_1=false;
+  double faul_1_x=0;
+  double faul_1_y=0;
+  void quality_ctrl_1(const osrf_gear::LogicalCameraImage::ConstPtr & image_msg){
+    if(image_msg->models.size()>0){
+      faul_1=true;
+      auto& item = image_msg->models[0];
+      faul_1_x = -item.pose.position.y;
+      faul_1_y = max(item.pose.position.z-0.35, -0.24); // limitations
+    }
+    else{
+      faul_1=false;
+    }
+  }
+  bool faul_2=false;
+  double faul_2_x=0;
+  double faul_2_y=0;
+  void quality_ctrl_2(const osrf_gear::LogicalCameraImage::ConstPtr & image_msg){
+    if(image_msg->models.size()>0){
+      faul_2=true;
+      auto& item = image_msg->models[0];
+      faul_2_x = item.pose.position.y;
+      faul_2_y = max(item.pose.position.z-0.35, -0.24);
+    }
+    else{
+      faul_2=false;
+    }
+  }
 private:
   std::string competition_state_;
   double current_score_;
@@ -1694,6 +1818,12 @@ private:
   
   const vector<double> classify2bpos_1=invkinematic(vector<double>{0.45, 0.45, 0.47});
   const vector<double> classify2bpos_2=invkinematic(vector<double>{0.45, -0.45, 0.47});
+
+  const vector<double> throw_1_1 = invkinematic(vector<double>{0.3, -0.65, 0.2});
+  const vector<double> throw_1_2 = invkinematic(vector<double>{0.3, -0.65, 0.1});
+  
+  const vector<double> throw_2_1 = invkinematic(vector<double>{0.3, 0.65, 0.2});
+  const vector<double> throw_2_2 = invkinematic(vector<double>{0.3, 0.65, 0.1});
 
   const vector<double> desk_hand_1_0 = invkinematic(vector<double>{-0.00001, 0.92, 0.4});
 
@@ -1785,11 +1915,11 @@ private:
   double dtheta_1, dtheta_2;
 };
 
-void proximity_sensor_callback(const sensor_msgs::Range::ConstPtr & msg) {
-  if ((msg->max_range - msg->range) > 0.01) {  // If there is an object in proximity.
-    ROS_INFO_THROTTLE(1, "Proximity sensor sees something.");
-  }
-}
+// void proximity_sensor_callback(const sensor_msgs::Range::ConstPtr & msg) {
+//   if ((msg->max_range - msg->range) > 0.01) {  // If there is an object in proximity.
+//     ROS_INFO_THROTTLE(1, "Proximity sensor sees something.");
+//   }
+// }
 
 
 
@@ -1854,6 +1984,17 @@ int main(int argc, char ** argv) {
     "/ariac/arm2/gripper/state", 10, 
     &MyCompetitionClass::gripper_2_callback, &comp_class);
 
+
+  //faulty
+
+  ros::Subscriber quality_ctrl_1_subscriber = node.subscribe(
+    "/ariac/quality_control_sensor_1", 10,
+    &MyCompetitionClass::quality_ctrl_1, &comp_class);  
+
+  ros::Subscriber quality_ctrl_2_subscriber = node.subscribe(
+    "/ariac/quality_control_sensor_2", 10,
+    &MyCompetitionClass::quality_ctrl_2, &comp_class);
+  
   ROS_INFO("Setup complete.");
   start_competition(node);
   ros::spin();  // This executes callbacks on new data until ctrl-c.

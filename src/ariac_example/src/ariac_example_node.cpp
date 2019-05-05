@@ -68,7 +68,8 @@ enum State{
   CLASSIFY,
   TRANSFER,
   TRANSIT,
-  FAULTY
+  FAULTY,
+  FLIP
 };
 
 enum PType{
@@ -107,6 +108,7 @@ public:
   vector<pair<double,double>> position;
   vector<double> theta;
   vector<int> obj_t;
+  vector<bool> flipped;
   vector<bool> finished;
   string shipment_t;
   Shipment(int priority=100):priority(priority){
@@ -178,8 +180,8 @@ public:
     flip_pose_2[3] += PI/2;
     flip_pose_2[4] = -flip_pose_2[0]; 
     
-    for(auto w: flip_pose_1) cout<<w<<" ";cout<<endl;
-    for(auto w: flip_pose_2) cout<<w<<" ";cout<<endl;
+    // for(auto w: flip_pose_1) cout<<w<<" ";cout<<endl;
+    // for(auto w: flip_pose_2) cout<<w<<" ";cout<<endl;
 
   }
 
@@ -254,6 +256,10 @@ public:
         else{
           tmp->theta.push_back(-atan2(2*(z*w+y*x), 1-2*(z*z+y*y)));
         }
+        if(z*z+w*w-y*y-x*x < 0){
+          tmp->flipped.push_back(true);
+        }
+        else tmp->flipped.push_back(false);
       }
       tmp->finished.resize(tmp->position.size(),false);
 
@@ -314,6 +320,9 @@ public:
         }
         if(count_1 == 0 && (!reached(arm_1_joint, arm_1_joint_goal) || fabs(arm_1_linear - arm_1_linear_goal) > 4e-3))
           break;
+        if(flip_lock>0){
+          arm_1_state = FLIP;
+        }
         if(trans_2){
           open_gripper(1);
           bin_num_1 = 0;
@@ -509,8 +518,8 @@ public:
             arm_1_state = CLASSIFY;
           // }
         }
-        if(trans_2){
-          arm_1_state = IDLE;
+        if(trans_2 || flip_lock>0){
+          arm_1_state = FLIP;
           bin_mem[bin_num_1-1][make_pair(dx_1,dy_1)]=0;
           fum_1_init=true;
           break;
@@ -588,7 +597,11 @@ public:
                   x_r_1 = tx_r_1;
                   y_r_1 = ty_r_1;
                   ship_id_1 = i;
-
+                  // need to use real lock in the future, very tiny chance of problem
+                  if(flipped_1 != shipments_1[0].flipped[i] && flip_lock==0){
+                    flip_lock=1;
+                    arm_1_state = FLIP;
+                  }
                   break;
                 }
               }
@@ -601,6 +614,10 @@ public:
                   arm_1_state = TRANSIT;
                   des_1 = 2;
                   count_1 = 0;
+                  if(flipped_1 != shipments_2[0].flipped[i] && flip_lock==0){
+                    flip_lock=1;
+                    arm_1_state = FLIP;
+                  }
                   break;
                 }
               }
@@ -807,6 +824,35 @@ public:
           }
         }
         break;
+      case FLIP:
+        if(count_1==0){
+          send_arm_to_state(arm_1_joint_trajectory_publisher_, flip_pose_1, 0.5, 0);
+          count_1++;
+          break;
+        }
+        if(flip_lock == 1){
+          if(flipok){
+            flipok = false;
+            flip_lock=0;
+            close_gripper(1);
+            arm_1_state = IDLE;
+            count_1=0;
+          }
+        }
+        else{
+          if(catched_1){
+            flipok = true;
+            send_arm_to_state(arm_1_joint_trajectory_publisher_, flip_pose_1, 0.6, 0);
+            arm_1_state = CLASSIFY;
+            count_1=0;
+            break;
+          }
+          if(count_1==1 && reached(arm_1_joint, flip_pose_1)){
+            send_arm_to_state(arm_1_joint_trajectory_publisher_, flip_pose_1, 1, -0.3);
+            count_1++;
+          }
+        }
+        break;
     }
 
 
@@ -968,6 +1014,9 @@ public:
         // send_arm_to_state( arm_2_joint_trajectory_publisher_, invkinematic(vector<double>{0.001, 1.05, -0.1}), 0.3, -1.18);break;
         if(count_2==0 && (!reached(arm_2_joint, arm_2_joint_goal) || fabs(arm_2_linear - arm_2_linear_goal) > 4e-3))
           break;
+        if(flip_lock>0){
+          arm_2_state = FLIP;
+        }
         if(trans_1){
           open_gripper(2);
           bin_num_2 = 0;
@@ -1084,8 +1133,8 @@ public:
           bin_mem[bin_num_2-1][make_pair(dx_2,dy_2)]=0;
           break;
         }
-        if(trans_1){
-          arm_2_state=IDLE;
+        if(trans_1 || flip_lock>0){
+          arm_2_state=FLIP;
           fum_2_init=true;
           bin_mem[bin_num_2-1][make_pair(dx_2,dy_2)]=0;
           break;
@@ -1132,6 +1181,10 @@ public:
                   y_r_2 = ty_r_2;
 
                   ship_id_2 = i;
+                  if(flipped_2 != shipments_1[0].flipped[i] && flip_lock==0){
+                    flip_lock=2;
+                    arm_2_state=FLIP;
+                  }
                   break;
                 }
               }
@@ -1144,6 +1197,10 @@ public:
                   arm_2_state = TRANSIT;
                   des_2 = 2;
                   count_2 = 0;
+                  if(flipped_2 != shipments_1[0].flipped[i] && flip_lock==0){
+                    flip_lock=2;
+                    arm_2_state=FLIP;
+                  }
                   break;
                 }
               }
@@ -1331,6 +1388,36 @@ public:
           }
         }
         break;
+      case FLIP:
+        cout<<count_2<<endl;
+        if(count_2==0){
+          send_arm_to_state(arm_2_joint_trajectory_publisher_, flip_pose_2, 0.5, 0);
+          count_2++;
+          break;
+        }
+        if(flip_lock==2){
+          if(flipok){
+            flipok=false;
+            flip_lock=0;
+            close_gripper(2);
+            arm_2_state=IDLE;
+            count_2=0;
+          }
+        }
+        else{
+          if(catched_2){
+            flipok=true;
+            send_arm_to_state(arm_2_joint_trajectory_publisher_, flip_pose_2, 0.6, 0);
+            arm_2_state = CLASSIFY;
+            count_2=0;
+            break;
+          }
+          if(count_2==1 && reached(arm_2_joint, flip_pose_2)){
+            send_arm_to_state(arm_2_joint_trajectory_publisher_, flip_pose_2, 1, 0.3);
+            count_2++;
+          }
+        }
+        break;
     }
 
 
@@ -1362,11 +1449,9 @@ public:
     msg.points[0].positions.push_back(0);
     if(joint_trajectory_publisher == arm_1_joint_trajectory_publisher_){
       arm_1_linear_goal = 1.0, arm_1_joint_goal=rest_joints, close_gripper(1);msg.points[0].positions[6]=1.0;
-      msg.points[0].positions = flip_pose_1;
     }
     else{
       arm_2_linear_goal = -1.0, arm_2_joint_goal=rest_joints, close_gripper(2);msg.points[0].positions[6]=-1.0;
-      msg.points[0].positions = flip_pose_2;
     }
     // How long to take getting to the point (floating point seconds).
     msg.points[0].time_from_start = ros::Duration(0.5);
@@ -1542,12 +1627,16 @@ public:
         if(theta_1>PI) theta_1-=PI_2;
         // theta_1 = - theta_1;
         // cout<<theta_1<<"---------------"<<endl;
+        if(1-2*(x*x+y*y) < 0) flipped_1=true;
+        else flipped_1=false;
         type_1 = type2int(item.type);
       }
       else{
         divx_2 = item.pose.position.z + 0.05;
         divy_2 = item.pose.position.y + 0.17;
         theta_2 = atan2(2*(z*w+y*x), 1-2*(z*z+y*y));
+        if(1-2*(x*x+y*y) < 0) flipped_2=true;
+        else flipped_2=false;
         type_2 = type2int(item.type);
       }
     }
@@ -1561,6 +1650,7 @@ public:
   }
   double divx_1=0, divy_1=0, theta_1=0;
   double divx_2=0, divy_2=0, theta_2=0;
+  bool flipped_1 = false, flipped_2 = false;
   int type_1=0;
   int type_2=0;
   int type2int(const string &type){
@@ -1932,6 +2022,10 @@ private:
   vector<int> bin_type;
 
   double dtheta_1, dtheta_2;
+
+  bool flipok=false;
+  int flip_lock=0;
+
 };
 
 // void proximity_sensor_callback(const sensor_msgs::Range::ConstPtr & msg) {

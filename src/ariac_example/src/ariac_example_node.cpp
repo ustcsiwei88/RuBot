@@ -322,6 +322,7 @@ public:
           break;
         if(flip_lock>0){
           arm_1_state = FLIP;
+          break;
         }
         if(trans_2){
           open_gripper(1);
@@ -519,7 +520,7 @@ public:
           // }
         }
         if(trans_2 || flip_lock>0){
-          arm_1_state = FLIP;
+          arm_1_state = flip_lock>0? FLIP: IDLE;
           bin_mem[bin_num_1-1][make_pair(dx_1,dy_1)]=0;
           fum_1_init=true;
           break;
@@ -617,6 +618,7 @@ public:
                   if(flipped_1 != shipments_2[0].flipped[i] && flip_lock==0){
                     flip_lock=1;
                     arm_1_state = FLIP;
+                    cout<<"goint to flip it"<<endl;
                   }
                   break;
                 }
@@ -834,7 +836,8 @@ public:
           if(flipok){
             flipok = false;
             flip_lock=0;
-            close_gripper(1);
+            // close_gripper(1);
+            send_arm_to_state(arm_1_joint_trajectory_publisher_, flip_pose_1, 0.2, 0.05);
             arm_1_state = IDLE;
             count_1=0;
           }
@@ -842,13 +845,15 @@ public:
         else{
           if(catched_1){
             flipok = true;
-            send_arm_to_state(arm_1_joint_trajectory_publisher_, flip_pose_1, 0.6, 0);
+            close_gripper(2);
+            send_arm_to_state(arm_1_joint_trajectory_publisher_, flip_pose_1, 0.7, -0.05);
             arm_1_state = CLASSIFY;
             count_1=0;
             break;
           }
           if(count_1==1 && reached(arm_1_joint, flip_pose_1)){
-            send_arm_to_state(arm_1_joint_trajectory_publisher_, flip_pose_1, 1, -0.3);
+            open_gripper(1);
+            send_arm_to_state(arm_1_joint_trajectory_publisher_, flip_pose_1, 1.5, -0.28);
             count_1++;
           }
         }
@@ -1008,6 +1013,7 @@ public:
         // shipments_2.erase(shipments_2.begin());
       }
     }
+    cout<<"flip lock is "<<flip_lock<<endl;
     switch(arm_2_state){
       case IDLE:
         // cout<<"arm 2 idling"<<endl;
@@ -1016,6 +1022,7 @@ public:
           break;
         if(flip_lock>0){
           arm_2_state = FLIP;
+          break;
         }
         if(trans_1){
           open_gripper(2);
@@ -1134,7 +1141,7 @@ public:
           break;
         }
         if(trans_1 || flip_lock>0){
-          arm_2_state=FLIP;
+          arm_2_state = flip_lock>0? FLIP : IDLE;
           fum_2_init=true;
           bin_mem[bin_num_2-1][make_pair(dx_2,dy_2)]=0;
           break;
@@ -1181,7 +1188,7 @@ public:
                   y_r_2 = ty_r_2;
 
                   ship_id_2 = i;
-                  if(flipped_2 != shipments_1[0].flipped[i] && flip_lock==0){
+                  if(flipped_2 != shipments_2[0].flipped[i] && flip_lock==0){
                     flip_lock=2;
                     arm_2_state=FLIP;
                   }
@@ -1389,7 +1396,6 @@ public:
         }
         break;
       case FLIP:
-        cout<<count_2<<endl;
         if(count_2==0){
           send_arm_to_state(arm_2_joint_trajectory_publisher_, flip_pose_2, 0.5, 0);
           count_2++;
@@ -1399,7 +1405,8 @@ public:
           if(flipok){
             flipok=false;
             flip_lock=0;
-            close_gripper(2);
+            // close_gripper(2);
+            send_arm_to_state(arm_2_joint_trajectory_publisher_, flip_pose_2, 0.2, -0.05);
             arm_2_state=IDLE;
             count_2=0;
           }
@@ -1407,13 +1414,15 @@ public:
         else{
           if(catched_2){
             flipok=true;
-            send_arm_to_state(arm_2_joint_trajectory_publisher_, flip_pose_2, 0.6, 0);
+            close_gripper(1);
+            send_arm_to_state(arm_2_joint_trajectory_publisher_, flip_pose_2, 0.7, 0.05);
             arm_2_state = CLASSIFY;
             count_2=0;
             break;
           }
           if(count_2==1 && reached(arm_2_joint, flip_pose_2)){
-            send_arm_to_state(arm_2_joint_trajectory_publisher_, flip_pose_2, 1, 0.3);
+            open_gripper(2);
+            send_arm_to_state(arm_2_joint_trajectory_publisher_, flip_pose_2, 1.5, 0.28);
             count_2++;
           }
         }

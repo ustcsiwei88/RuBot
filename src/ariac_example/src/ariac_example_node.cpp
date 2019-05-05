@@ -172,6 +172,15 @@ public:
       cos_table[i] = cos(tmp);
       tmp += 0.00175438600127;
     }
+
+    flip_pose_1[3] += PI/2;
+    flip_pose_1[4] = PI-flip_pose_1[0];
+    flip_pose_2[3] += PI/2;
+    flip_pose_2[4] = -flip_pose_2[0]; 
+    
+    for(auto w: flip_pose_1) cout<<w<<" ";cout<<endl;
+    for(auto w: flip_pose_2) cout<<w<<" ";cout<<endl;
+
   }
 
   vector<double> cos_table;
@@ -1351,10 +1360,14 @@ public:
     // msg.points[0].positions.resize(msg.joint_names.size(), 0.0);
     msg.points[0].positions = rest_joints;
     msg.points[0].positions.push_back(0);
-    if(joint_trajectory_publisher == arm_1_joint_trajectory_publisher_)
-      {arm_1_linear_goal = 1.0, arm_1_joint_goal=rest_joints, close_gripper(1);msg.points[0].positions[6]=1.0;}
-    else
-      {arm_2_linear_goal = -1.0, arm_2_joint_goal=rest_joints, close_gripper(2);msg.points[0].positions[6]=-1.0;}
+    if(joint_trajectory_publisher == arm_1_joint_trajectory_publisher_){
+      arm_1_linear_goal = 1.0, arm_1_joint_goal=rest_joints, close_gripper(1);msg.points[0].positions[6]=1.0;
+      msg.points[0].positions = flip_pose_1;
+    }
+    else{
+      arm_2_linear_goal = -1.0, arm_2_joint_goal=rest_joints, close_gripper(2);msg.points[0].positions[6]=-1.0;
+      msg.points[0].positions = flip_pose_2;
+    }
     // How long to take getting to the point (floating point seconds).
     msg.points[0].time_from_start = ros::Duration(0.5);
     // ROS_INFO_STREAM("Sending command:\n" << msg);
@@ -1876,6 +1889,10 @@ private:
   const vector<double> desk_hand_2_11=invkinematic(vector<double>{-0.05, -0.92, 0.1});
   const vector<double> desk_hand_2_12=invkinematic(vector<double>{-0.05, -0.92, -0.04});
   
+
+  vector<double> flip_pose_1 = invkinematic(vector<double>{-0.0265, 0.8, 0.47});
+  vector<double> flip_pose_2 = invkinematic(vector<double>{0.0265, -0.8, 0.47});
+
   double x_r_1, y_r_1;
   double x_d_1, y_d_1;
   double x_r_2, y_r_2;

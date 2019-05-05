@@ -549,12 +549,13 @@ public:
         }
         break;
       case CLASSIFY:
-        if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3){
+        if(count_1==0 && reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3){
           send_arm_to_state( arm_1_joint_trajectory_publisher_, classify_pos_1, 0.3, 0);
+          count_1++;
         }
         if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3){
           count_1++;
-          if(count_1==20){     //wait around 0.4s for classification
+          if(count_1==15){     //wait around 0.4s for classification
             bin_type[bin_num_1] = type_1;
             des_1 = -1;
             x_r_1 = divx_1;
@@ -965,7 +966,7 @@ public:
           // cout<<"fetching from shelf"<<endl;
           if(count_2<2){
             send_arm_to_state_n(arm_2_joint_trajectory_publisher_, vector<vector<double>>{
-              desk_hand_2_2, desk_hand_2_4, desk_hand_2_4, 
+              desk_hand_2_0, desk_hand_2_4, desk_hand_2_4, 
               desk_hand_2_5, desk_hand_2_6, desk_hand_2_6, 
               desk_hand_2_7, desk_hand_2_8, desk_hand_2_8,
               desk_hand_2_9, desk_hand_2_10, desk_hand_2_10, 
@@ -1089,13 +1090,14 @@ public:
         }
         break;
       case CLASSIFY:
-        if(reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear - arm_2_linear_goal) <= 4e-3){
+        if(count_2==0 && reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear - arm_2_linear_goal) <= 4e-3){
           send_arm_to_state( arm_2_joint_trajectory_publisher_, classify_pos_2, 0.3, 0);
+          count_2++;
         }
         
         if(reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear - arm_2_linear_goal) <= 4e-3){
           count_2++;
-          if(count_2==20){     //wait around 0.4s for classification
+          if(count_2==15){     //wait around 0.4s for classification
             bin_type[bin_num_2] = type_2;
             des_2 = 0;
             x_r_2 = divx_2;
@@ -1310,7 +1312,7 @@ public:
         }
         else{
           if(reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear - arm_2_linear_goal) <= 4e-3){
-            close_gripper(1);
+            close_gripper(2);
             count_2++;
             if(count_2==12){ // ~0.2 sec to throw it
               arm_2_state=IDLE;
@@ -1825,7 +1827,7 @@ private:
   const vector<double> throw_2_1 = invkinematic(vector<double>{0.3, 0.65, 0.2});
   const vector<double> throw_2_2 = invkinematic(vector<double>{0.3, 0.65, 0.1});
 
-  const vector<double> desk_hand_1_0 = invkinematic(vector<double>{-0.00001, 0.92, 0.4});
+  const vector<double> desk_hand_1_0 = invkinematic(vector<double>{-0.00001, 0.92, 0.35});
 
   vector<double> desk_hand_1_1_pose {-0.00001, 0.92, 0.18};
   vector<double> desk_hand_1_2_pose {-0.00001, 0.92, 0.1};
@@ -1854,7 +1856,7 @@ private:
   // const vector<double> desk_hand_1_19=invkinematic(vector<double>{0.2, 0.91, 0.1});
   // const vector<double> desk_hand_1_20=invkinematic(vector<double>{0.2, 0.91, -0.04});
   
-  const vector<double> desk_hand_2_0=invkinematic(vector<double>{-0.00001, -0.92, 0.4});  
+  const vector<double> desk_hand_2_0=invkinematic(vector<double>{-0.00001, -0.92, 0.35});  
 
   vector<double> desk_hand_2_1_pose {-0.00001, -0.92, 0.18};
   vector<double> desk_hand_2_2_pose {-0.00001, -0.92, 0.1};

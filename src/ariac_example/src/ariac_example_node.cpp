@@ -322,6 +322,7 @@ public:
           break;
         if(flip_lock>0){
           arm_1_state = FLIP;
+          bin_num_1=0;
           break;
         }
         if(trans_2){
@@ -344,6 +345,7 @@ public:
               count_1=0;
               trans_2=false;
               send_arm_to_state( arm_1_joint_trajectory_publisher_, classify_pos_1, 0.3, 0);
+              trans_lock=false;
             }
             count_1++;
             if(count_1>264){
@@ -354,6 +356,7 @@ public:
                 count_1=0;
                 arm_1_state=IDLE;
                 fail_1=0;
+                trans_lock=false;
                 send_arm_to_state( arm_1_joint_trajectory_publisher_, desk_hand_1_3, 0.4, 0);
               }
             }
@@ -398,7 +401,7 @@ public:
             }
           }
         }
-        if(shipments_2.size()>0 && !trans_1){
+        if(shipments_2.size()>0){
           for(int i=0;i<shipments_2[0].obj_t.size();i++){
             int item = shipments_2[0].obj_t[i];
             if(shipments_2[0].finished[i]) continue;
@@ -582,45 +585,62 @@ public:
             if(shipments_1.size()>0){
               for(int i=0;i<shipments_1[0].obj_t.size();i++){
                 if(!shipments_1[0].finished[i] && type_1 == shipments_1[0].obj_t[i]){
-                  arm_1_state = TRANSIT;
-                  des_1 = 1;
-                  count_1 = 0;
-                  x_d_1 = shipments_1[0].position[i].first;
-                  y_d_1 = shipments_1[0].position[i].second;
-                  // cout<<shipments_1[0].theta[i] <<" ---=-=-=---- "<<theta_1<<endl;
-                  dtheta_1 = shipments_1[0].theta[i] - theta_1;
-                  // cout<<"theta_1 :"<<theta_1 <<" thetai"<<shipments_1[0].theta[i]<<endl;
-                  while(dtheta_1 > PI) dtheta_1 -= PI_2;
-                  while(dtheta_1 <= -PI) dtheta_1 += PI_2;
-
-                  double tx_r_1 = cos(dtheta_1) * x_r_1 - sin(dtheta_1) * y_r_1;
-                  double ty_r_1 = cos(dtheta_1) * y_r_1 + sin(dtheta_1) * x_r_1;
-                  x_r_1 = tx_r_1;
-                  y_r_1 = ty_r_1;
-                  ship_id_1 = i;
-                  // need to use real lock in the future, very tiny chance of problem
-                  if(flipped_1 != shipments_1[0].flipped[i] && flip_lock==0){
-                    flip_lock=1;
-                    arm_1_state = FLIP;
+                  
+                  //real lock in the future, if getting into problem
+                  if(flipped_1 != shipments_1[0].flipped[i]){
+                    if(flip_lock==0){
+                      flip_lock=1;
+                      arm_1_state = FLIP;
+                      des_1 = 1;
+                      count_1 = 0;
+                      break;
+                    }
                   }
-                  break;
+                  else{                    
+                    arm_1_state = TRANSIT;
+                    des_1 = 1;
+                    count_1 = 0;
+                    x_d_1 = shipments_1[0].position[i].first;
+                    y_d_1 = shipments_1[0].position[i].second;
+                    // cout<<shipments_1[0].theta[i] <<" ---=-=-=---- "<<theta_1<<endl;
+                    dtheta_1 = shipments_1[0].theta[i] - theta_1;
+                    // cout<<"theta_1 :"<<theta_1 <<" thetai"<<shipments_1[0].theta[i]<<endl;
+                    while(dtheta_1 > PI) dtheta_1 -= PI_2;
+                    while(dtheta_1 <= -PI) dtheta_1 += PI_2;
+
+                    double tx_r_1 = cos(dtheta_1) * x_r_1 - sin(dtheta_1) * y_r_1;
+                    double ty_r_1 = cos(dtheta_1) * y_r_1 + sin(dtheta_1) * x_r_1;
+                    x_r_1 = tx_r_1;
+                    y_r_1 = ty_r_1;
+                    ship_id_1 = i;
+                    break;
+                  }
                 }
               }
               if(des_1==1) break;
             }
-            if(shipments_2.size()>0 && !trans_1){     //-------------------------
-
+            if(shipments_2.size()>0){
               for(int i=0;i<shipments_2[0].obj_t.size();i++){
-                if(!shipments_2[0].finished[i] && type_1 == shipments_2[0].obj_t[i]){
-                  arm_1_state = TRANSIT;
-                  des_1 = 2;
-                  count_1 = 0;
+                if(!shipments_2[0].finished[i] && type_1 == shipments_2[0].obj_t[i] && !trans_lock){
+                  
                   if(flipped_1 != shipments_2[0].flipped[i] && flip_lock==0){
-                    flip_lock=1;
-                    arm_1_state = FLIP;
-                    cout<<"goint to flip it"<<endl;
+                    if(flip_lock==0){
+                      flip_lock=1;
+                      des_1 = 2;
+                      count_1=0;
+                      arm_1_state = FLIP;
+                      break;
+                    }
                   }
-                  break;
+                  else{
+                    if(!trans_lock){
+                      trans_lock=true;
+                      des_1 = 2;
+                      arm_1_state = TRANSIT;
+                      count_1 = 0;
+                      break;
+                    }
+                  }
                 }
               }
               if(des_1 ==2) break;
@@ -828,7 +848,7 @@ public:
         break;
       case FLIP:
         if(count_1==0){
-          send_arm_to_state(arm_1_joint_trajectory_publisher_, flip_pose_1, 0.5, 0);
+          send_arm_to_state(arm_1_joint_trajectory_publisher_, flip_pose_1, 0.5, -0.03);
           count_1++;
           break;
         }
@@ -1013,7 +1033,6 @@ public:
         // shipments_2.erase(shipments_2.begin());
       }
     }
-    cout<<"flip lock is "<<flip_lock<<endl;
     switch(arm_2_state){
       case IDLE:
         // cout<<"arm 2 idling"<<endl;
@@ -1022,13 +1041,14 @@ public:
           break;
         if(flip_lock>0){
           arm_2_state = FLIP;
+          bin_num_2=0;
           break;
         }
         if(trans_1){
           open_gripper(2);
           bin_num_2 = 0;
 
-          // cout<<"fetching from shelf"<<endl;
+          // cout<<"fetching from desk"<<endl;
           if(count_2<2){
             send_arm_to_state_n(arm_2_joint_trajectory_publisher_, vector<vector<double>>{
               desk_hand_2_0, desk_hand_2_4, desk_hand_2_4, 
@@ -1046,6 +1066,7 @@ public:
               arm_2_state=CLASSIFY;
               count_2=0;
               trans_1=false;
+              trans_lock=false;
             }
             count_2++;
             if(count_2>264){
@@ -1053,6 +1074,7 @@ public:
               fail_2++;
               if(fail_2==3){
                 trans_1=false;
+                trans_lock=false;
                 count_2=0;
                 arm_2_state=IDLE;
                 fail_2=0;
@@ -1078,7 +1100,7 @@ public:
             }
           }
         }
-        if(shipments_1.size()>0 && !trans_2){
+        if(shipments_1.size()>0){
           for(int i=0;i<shipments_1[0].obj_t.size();i++){
             int item = shipments_1[0].obj_t[i];
             if(shipments_1[0].finished[i]) continue;
@@ -1172,43 +1194,61 @@ public:
               for(int i=0;i<shipments_2[0].obj_t.size();i++){
                 if(!shipments_2[0].finished[i] && type_2 == shipments_2[0].obj_t[i]){
                   // cout<<shipments_2[0].obj_t[i]<<"----------type matched"<<endl;
-                  arm_2_state = TRANSIT;
-                  des_2 = 1;
-                  count_2 = 0;
-                  x_d_2 = shipments_2[0].position[i].first;
-                  y_d_2 = shipments_2[0].position[i].second;
-                  
-                  dtheta_2 = shipments_2[0].theta[i] - theta_2;
-                  while(dtheta_2 > PI) dtheta_2 -= PI_2;
-                  while(dtheta_2 <= -PI) dtheta_2 += PI_2;
 
-                  double tx_r_2 = cos(dtheta_2) * x_r_2 + sin(dtheta_2) * y_r_2;
-                  double ty_r_2 = cos(dtheta_2) * y_r_2 - sin(dtheta_2) * x_r_2;
-                  x_r_2 = tx_r_2;
-                  y_r_2 = ty_r_2;
-
-                  ship_id_2 = i;
-                  if(flipped_2 != shipments_2[0].flipped[i] && flip_lock==0){
-                    flip_lock=2;
-                    arm_2_state=FLIP;
+                  if(flipped_2 != shipments_2[0].flipped[i]){
+                    if(flip_lock==0){
+                      flip_lock=2;
+                      arm_2_state=FLIP;
+                      des_2 = 1;
+                      count_2 = 0;
+                      break;
+                    }
                   }
-                  break;
+                  else{
+                    arm_2_state = TRANSIT;
+                    des_2 = 1;
+                    count_2 = 0;
+                    x_d_2 = shipments_2[0].position[i].first;
+                    y_d_2 = shipments_2[0].position[i].second;
+                    
+                    dtheta_2 = shipments_2[0].theta[i] - theta_2;
+                    while(dtheta_2 > PI) dtheta_2 -= PI_2;
+                    while(dtheta_2 <= -PI) dtheta_2 += PI_2;
+
+                    double tx_r_2 = cos(dtheta_2) * x_r_2 + sin(dtheta_2) * y_r_2;
+                    double ty_r_2 = cos(dtheta_2) * y_r_2 - sin(dtheta_2) * x_r_2;
+                    x_r_2 = tx_r_2;
+                    y_r_2 = ty_r_2;
+
+                    ship_id_2 = i;
+                    break;
+                  }
                 }
               }
-              if(des_2 ==1) break;
+              if(des_2==1) break;
             }
 
-            if(shipments_1.size()>0 && !trans_2){
+            if(shipments_1.size()>0){
               for(int i=0;i<shipments_1[0].obj_t.size();i++){
                 if(!shipments_1[0].finished[i] && type_2 == shipments_1[0].obj_t[i]){
-                  arm_2_state = TRANSIT;
-                  des_2 = 2;
-                  count_2 = 0;
-                  if(flipped_2 != shipments_1[0].flipped[i] && flip_lock==0){
-                    flip_lock=2;
-                    arm_2_state=FLIP;
+                  if(flipped_2 != shipments_1[0].flipped[i]){
+                    if(flip_lock==0){
+                      flip_lock=2;
+                      arm_2_state=FLIP;
+                      count_2=0;
+                      des_2=2;
+                      break;
+                    }
                   }
-                  break;
+                  else{
+                    if(!trans_lock){
+                      trans_lock=true;
+                      des_2=2;
+                      arm_2_state=TRANSIT;
+                      count_2=0;
+                      break;
+                    }
+                  }
                 }
               }
               if(des_2==2) break;
@@ -1397,7 +1437,7 @@ public:
         break;
       case FLIP:
         if(count_2==0){
-          send_arm_to_state(arm_2_joint_trajectory_publisher_, flip_pose_2, 0.5, 0);
+          send_arm_to_state(arm_2_joint_trajectory_publisher_, flip_pose_2, 0.5, 0.03);
           count_2++;
           break;
         }
@@ -2034,6 +2074,7 @@ private:
 
   bool flipok=false;
   int flip_lock=0;
+  bool trans_lock=false; // too lazy to use real lock, mostly ok
 
 };
 

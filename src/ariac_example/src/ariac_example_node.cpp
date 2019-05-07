@@ -623,7 +623,7 @@ public:
               for(int i=0;i<shipments_2[0].obj_t.size();i++){
                 if(!shipments_2[0].finished[i] && type_1 == shipments_2[0].obj_t[i] && !trans_lock){
                   
-                  if(flipped_1 != shipments_2[0].flipped[i] && flip_lock==0){
+                  if(flipped_1 != shipments_2[0].flipped[i]){
                     if(flip_lock==0){
                       flip_lock=1;
                       des_1 = 2;
@@ -948,17 +948,17 @@ public:
       if(fum_1_init)p1 = invkinematic(vector<double>{-x+0.19, -0.03, z-0.9 + 0.6});
       else 
         p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.13});
-      auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9-0.010});
+      auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9-0.011});
       auto p3 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.16});
       // auto res = kinematic(p1);
       //auto p1 = invkinematic(vector<double>{-x+dx, dy, z+0.05});
       if(fum_1_init)
         send_arm_to_state_n(arm_1_joint_trajectory_publisher_, vector<vector<double>>{p1,p2,p2,p3}, 
-          vector<double>{1.0, 1.4, 1.6, 2}, 
+          vector<double>{1.25, 1.55, 1.8, 2}, 
           vector<double>{y - arm_1_zero, y - arm_1_zero, y - arm_1_zero, y - arm_1_zero});
       else
         send_arm_to_state_n(arm_1_joint_trajectory_publisher_, vector<vector<double>>{p1,p2,p2,p3}, 
-          vector<double>{0.2, 0.6, 0.8, 0.9}, 
+          vector<double>{0.2, 0.5, 0.75, 0.95}, 
           vector<double>{y - arm_1_zero, y - arm_1_zero, y - arm_1_zero, y - arm_1_zero});
       fum_1_init=false;
     }

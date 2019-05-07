@@ -214,7 +214,7 @@ public:
   }
   /// Called when a new Order message is received.
   void order_callback(const osrf_gear::Order::ConstPtr & order_msg) {
-    // ROS_INFO_STREAM("Received order:\n" << *order_msg);
+    ROS_INFO_STREAM("Received order:\n" << *order_msg);
     // Order tmp;
     //received_orders_.resize(received_orders_.size()+1);
     // Order * tmp;
@@ -335,7 +335,7 @@ public:
               desk_hand_1_7, desk_hand_1_8, desk_hand_1_8,
               desk_hand_1_9, desk_hand_1_10, desk_hand_1_10, 
               desk_hand_1_11, desk_hand_1_12, desk_hand_1_12
-            }, vector<double>{1.0, 1.5, 1.7, 2.1, 2.4, 2.6, 3.0, 3.3, 3.5, 3.9, 4.2, 4.4, 4.8, 5.0, 5.2},
+            }, vector<double>{1.5 , 3.0 , 3.2 , 3.6 , 3.9 , 4.1 , 4.5 , 4.8 , 5.0 , 5.4 , 5.7 , 5.9 , 6.3 , 6.5 , 6.7},
             vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,0.0, 0.0, 0.0, 0.0, 0.0, 0.0,0.0,0.0});
             count_1+=2;
           }
@@ -348,7 +348,7 @@ public:
               trans_lock=false;
             }
             count_1++;
-            if(count_1>264){
+            if(count_1>350){
               count_1=1;
               fail_1++;
               if(fail_1==3){
@@ -370,6 +370,7 @@ public:
         if(shipments_1.size()>0){
           for(int i=0;i<shipments_1[0].obj_t.size();i++){
             int item = shipments_1[0].obj_t[i];
+            if(shipments_1[0].finished[i]) continue;
             for(auto &tmp:events)
               if(tmp.second==item){
                 arm_1_state=BELT;
@@ -380,6 +381,7 @@ public:
         if(shipments_2.size()>0){
           for(int i=0;i<shipments_2[0].obj_t.size();i++){
             int item = shipments_2[0].obj_t[i];
+            if(shipments_2[0].finished[i]) continue;
             for(auto &tmp:events)
               if(tmp.second==item){
                 arm_1_state=BELT;
@@ -577,7 +579,10 @@ public:
         }
         if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3){
           count_1++;
-          if(count_1==15){     //wait around 0.4s for classification
+          if(count_1==2){
+            signal_1=false;
+          }
+          if(signal_1){   //use signal instead  //wait around 0.4s for classification
             bin_type[bin_num_1] = type_1;
             des_1 = -1;
             x_r_1 = divx_1;
@@ -613,8 +618,7 @@ public:
 
             if(shipments_2.size()>0){
               for(int i=0;i<shipments_2[0].obj_t.size();i++){
-                if(!shipments_2[0].finished[i] && type_1 == shipments_2[0].obj_t[i] && !trans_lock){
-                  
+                if(!shipments_2[0].finished[i] && type_1 == shipments_2[0].obj_t[i]){
                   if(flipped_1 != shipments_2[0].flipped[i]){
                     if(flip_lock==0){
                       flip_lock=1;
@@ -631,8 +635,7 @@ public:
 
             if(shipments_2.size()>0){
               for(int i=0;i<shipments_2[0].obj_t.size();i++){
-                if(!shipments_2[0].finished[i] && type_1 == shipments_2[0].obj_t[i] && !trans_lock){
-                  
+                if(!shipments_2[0].finished[i] && type_1 == shipments_2[0].obj_t[i]){
                   if(flipped_1 == shipments_2[0].flipped[i]){
                     if(!trans_lock){
                       trans_lock=true;
@@ -1077,7 +1080,7 @@ public:
               desk_hand_2_7, desk_hand_2_8, desk_hand_2_8,
               desk_hand_2_9, desk_hand_2_10, desk_hand_2_10, 
               desk_hand_2_11, desk_hand_2_12, desk_hand_2_12
-            }, vector<double>{1.0, 1.5, 1.7, 2.1, 2.4, 2.6, 3.0, 3.3, 3.5, 3.9, 4.2, 4.4, 4.8, 5.0, 5.2}, 
+            }, vector<double>{1.5 , 3.0 , 3.2 , 3.6 , 3.9 , 4.1 , 4.5 , 4.8 , 5.0 , 5.4 , 5.7 , 5.9 , 6.3 , 6.5 , 6.7}, 
             vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,0.0, 0.0, 0.0, 0.0, 0.0, 0.0,0.0,0.0});
             count_2+=2;
           }
@@ -1090,7 +1093,7 @@ public:
               trans_lock=false;
             }
             count_2++;
-            if(count_2>264){
+            if(count_2>350){
               count_2=1;
               fail_2++;
               if(fail_2==3){
@@ -1205,7 +1208,10 @@ public:
         
         if(reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear - arm_2_linear_goal) <= 4e-3){
           count_2++;
-          if(count_2==15){     //wait around 0.4s for classification
+          if(count_2==2){
+            signal_2=false;
+          }
+          if(signal_2){   //use signal instead  //wait around 0.4s for classification
             bin_type[bin_num_2] = type_2;
             des_2 = 0;
             x_r_2 = divx_2;
@@ -1718,6 +1724,7 @@ public:
         if(1-2*(x*x+y*y) < 0) flipped_1=true;
         else flipped_1=false;
         type_1 = type2int(item.type);
+        signal_1=true;
       }
       else{
         divx_2 = item.pose.position.z + 0.05;
@@ -1726,6 +1733,7 @@ public:
         if(1-2*(x*x+y*y) < 0) flipped_2=true;
         else flipped_2=false;
         type_2 = type2int(item.type);
+        signal_2=true;
       }
     }
     // int i = 0;
@@ -2114,6 +2122,7 @@ private:
   bool flipok=false;
   int flip_lock=0;
   bool trans_lock=false; // too lazy to use real lock, mostly ok
+  bool signal_1=false, signal_2=false;
 
 };
 

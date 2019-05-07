@@ -2123,7 +2123,6 @@ private:
   int flip_lock=0;
   bool trans_lock=false; // too lazy to use real lock, mostly ok
   bool signal_1=false, signal_2=false;
-
 };
 
 // void proximity_sensor_callback(const sensor_msgs::Range::ConstPtr & msg) {

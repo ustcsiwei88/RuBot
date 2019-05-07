@@ -587,16 +587,7 @@ public:
                 if(!shipments_1[0].finished[i] && type_1 == shipments_1[0].obj_t[i]){
                   
                   //real lock in the future, if getting into problem
-                  if(flipped_1 != shipments_1[0].flipped[i]){
-                    if(flip_lock==0){
-                      flip_lock=1;
-                      arm_1_state = FLIP;
-                      des_1 = 1;
-                      count_1 = 0;
-                      break;
-                    }
-                  }
-                  else{                    
+                  if(flipped_1 == shipments_1[0].flipped[i]){           
                     arm_1_state = TRANSIT;
                     des_1 = 1;
                     count_1 = 0;
@@ -619,6 +610,7 @@ public:
               }
               if(des_1==1) break;
             }
+
             if(shipments_2.size()>0){
               for(int i=0;i<shipments_2[0].obj_t.size();i++){
                 if(!shipments_2[0].finished[i] && type_1 == shipments_2[0].obj_t[i] && !trans_lock){
@@ -632,7 +624,16 @@ public:
                       break;
                     }
                   }
-                  else{
+                }
+              }
+              if(des_1 ==2) break;
+            }
+
+            if(shipments_2.size()>0){
+              for(int i=0;i<shipments_2[0].obj_t.size();i++){
+                if(!shipments_2[0].finished[i] && type_1 == shipments_2[0].obj_t[i] && !trans_lock){
+                  
+                  if(flipped_1 == shipments_2[0].flipped[i]){
                     if(!trans_lock){
                       trans_lock=true;
                       des_1 = 2;
@@ -645,6 +646,26 @@ public:
               }
               if(des_1 ==2) break;
             }
+
+            if(shipments_1.size()>0){
+              for(int i=0;i<shipments_1[0].obj_t.size();i++){
+                if(!shipments_1[0].finished[i] && type_1 == shipments_1[0].obj_t[i]){
+                  
+                  //real lock in the future, if getting into problem
+                  if(flipped_1 != shipments_1[0].flipped[i]){
+                    if(flip_lock==0){
+                      flip_lock=1;
+                      arm_1_state = FLIP;
+                      des_1 = 1;
+                      count_1 = 0;
+                      break;
+                    }
+                  }
+                }
+              }
+              if(des_1==1) break;
+            }
+
             //put it back
             des_1=3;
             arm_1_state = TRANSIT;
@@ -1195,16 +1216,7 @@ public:
                 if(!shipments_2[0].finished[i] && type_2 == shipments_2[0].obj_t[i]){
                   // cout<<shipments_2[0].obj_t[i]<<"----------type matched"<<endl;
 
-                  if(flipped_2 != shipments_2[0].flipped[i]){
-                    if(flip_lock==0){
-                      flip_lock=2;
-                      arm_2_state=FLIP;
-                      des_2 = 1;
-                      count_2 = 0;
-                      break;
-                    }
-                  }
-                  else{
+                  if(flipped_2 == shipments_2[0].flipped[i]){
                     arm_2_state = TRANSIT;
                     des_2 = 1;
                     count_2 = 0;
@@ -1240,7 +1252,15 @@ public:
                       break;
                     }
                   }
-                  else{
+                }
+              }
+              if(des_2==2) break;
+            }
+
+            if(shipments_1.size()>0){
+              for(int i=0;i<shipments_1[0].obj_t.size();i++){
+                if(!shipments_1[0].finished[i] && type_2 == shipments_1[0].obj_t[i]){
+                  if(flipped_2 == shipments_1[0].flipped[i]){
                     if(!trans_lock){
                       trans_lock=true;
                       des_2=2;
@@ -1254,6 +1274,25 @@ public:
               if(des_2==2) break;
             }
 
+
+            if(shipments_2.size()>0){
+
+              for(int i=0;i<shipments_2[0].obj_t.size();i++){
+                if(!shipments_2[0].finished[i] && type_2 == shipments_2[0].obj_t[i]){
+                  // cout<<shipments_2[0].obj_t[i]<<"----------type matched"<<endl;
+                  if(flipped_2 != shipments_2[0].flipped[i]){
+                    if(flip_lock==0){
+                      flip_lock=2;
+                      arm_2_state=FLIP;
+                      des_2 = 1;
+                      count_2 = 0;
+                      break;
+                    }
+                  }
+                }
+              }
+              if(des_2==1) break;
+            }
             des_2=3;
             arm_2_state = TRANSIT;
             count_2=0;

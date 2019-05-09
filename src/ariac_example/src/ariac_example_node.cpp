@@ -69,7 +69,8 @@ enum State{
   TRANSFER,
   TRANSIT,
   FAULTY,
-  FLIP
+  FLIP,
+  INV
 };
 
 enum PType{
@@ -110,6 +111,7 @@ public:
   vector<int> obj_t;
   vector<bool> flipped;
   vector<bool> finished;
+  vector<bool> inv;
   string shipment_t;
   Shipment(int priority=100):priority(priority){
   }
@@ -214,7 +216,7 @@ public:
   }
   /// Called when a new Order message is received.
   void order_callback(const osrf_gear::Order::ConstPtr & order_msg) {
-    ROS_INFO_STREAM("Received order:\n" << *order_msg);
+    // ROS_INFO_STREAM("Received order:\n" << *order_msg);
     // Order tmp;
     //received_orders_.resize(received_orders_.size()+1);
     // Order * tmp;
@@ -226,43 +228,96 @@ public:
     // Order & tmp = received_orders_[received_orders_.size()-1];
     for(auto & item:order_msg->shipments){
       Shipment *tmp;
+
+      //see whether it's an update
+      int i;
+      bool update = false;
       int n = bin_t2int(item.agv_id);
-      if(n==1) {
-        shipments_1.resize(shipments_1.size()+1);
-        tmp = &shipments_1[shipments_1.size()-1];
-        tmp->agv = 1;
+      for(i=0;i<shipments_1.size();i++){
+        if(shipments_1[i].shipment_t == item.shipment_type){
+          update = true;
+          // cout<<"updating"<<endl;
+          break;
+        }
       }
-      else{
-        shipments_2.resize(shipments_2.size()+1);
-        tmp = &shipments_2[shipments_2.size()-1];
-        tmp->agv = 2;
-      }
-      tmp->shipment_t=(item.shipment_type);
-      
-      for(auto & item1: item.products){
-        // cout<<item1.type<<" "<<type2int(item1.type)<<endl;
-        tmp->obj_t.push_back(type2int(item1.type));
-        auto & item2=item1.pose;
-        tmp->position.emplace_back(item2.position.x, item2.position.y);
-        double x,y,z,w;
-        x = item2.orientation.x;
-        y = item2.orientation.y;
-        z = item2.orientation.z;
-        w = item2.orientation.w;
-        if(n==1){
-          tmp->theta.push_back(atan2(2*(z*w+y*x), 1-2*(z*z+y*y)));
-          // cout<<" type, "<<item1.type<<"  angle "<<*tmp->theta.rbegin()<<endl;
+      if(update){
+        n=3;
+        tmp = &shipments_1[i];
+        if(i>0){
+          tmp->position.clear();tmp->obj_t.clear();tmp->theta.clear();
+          tmp->inv.clear(); tmp->finished.clear();tmp->flipped.clear();
         }
         else{
-          tmp->theta.push_back(-atan2(2*(z*w+y*x), 1-2*(z*z+y*y)));
+          //fetch from tray
+          fill(tmp->inv.begin(),tmp->inv.end(),true);
         }
-        if(z*z+w*w-y*y-x*x < 0){
-          tmp->flipped.push_back(true);
-        }
-        else tmp->flipped.push_back(false);
       }
-      tmp->finished.resize(tmp->position.size(),false);
-
+      else{
+        for(i=0;i<shipments_2.size();i++){
+          if(shipments_2[i].shipment_t == item.shipment_type){
+            update=true;
+            break;
+          }
+        }
+        if(update){
+          n=3;
+          tmp = &shipments_2[i];
+          if(i>0){
+            tmp->position.clear();tmp->obj_t.clear();tmp->theta.clear();
+            tmp->inv.clear(); tmp->finished.clear();tmp->flipped.clear();
+          }
+          else{
+            //fetch from tray
+            fill(tmp->inv.begin(),tmp->inv.end(),true);
+          }
+        }
+      }
+      
+      if(1/*!update*/){
+        if(n==1) {
+          shipments_1.resize(shipments_1.size()+1);
+          tmp = &shipments_1[shipments_1.size()-1];
+          tmp->agv = 1;
+        }
+        else if(n==2){
+          shipments_2.resize(shipments_2.size()+1);
+          tmp = &shipments_2[shipments_2.size()-1];
+          tmp->agv = 2;
+        }
+        tmp->shipment_t=(item.shipment_type);
+        
+        for(auto & item1: item.products){
+          // cout<<item1.type<<" "<<type2int(item1.type)<<endl;
+          tmp->obj_t.push_back(type2int(item1.type));
+          auto & item2=item1.pose;
+          tmp->position.emplace_back(item2.position.x, item2.position.y);
+          double x,y,z,w;
+          x = item2.orientation.x;
+          y = item2.orientation.y;
+          z = item2.orientation.z;
+          w = item2.orientation.w;
+          if(n==1){
+            tmp->theta.push_back(atan2(2*(z*w+y*x), 1-2*(z*z+y*y)));
+            // cout<<" type, "<<item1.type<<"  angle "<<*tmp->theta.rbegin()<<endl;
+          }
+          else{
+            tmp->theta.push_back(-atan2(2*(z*w+y*x), 1-2*(z*z+y*y)));
+          }
+          if(z*z+w*w-y*y-x*x < 0){
+            tmp->flipped.push_back(true);
+          }
+          else tmp->flipped.push_back(false);
+        }
+        if(n!=3){
+          tmp->finished.resize(tmp->position.size(),false);
+          tmp->inv.resize(tmp->position.size(),false);
+        }
+        else{
+          for(int j=0;j<item.products.size();j++){
+            tmp->inv.push_back(false);tmp->finished.push_back(false);
+          }
+        }
+      }
     }
     // for(auto &: order_msg->shipment)
     // received_orders_.push_back(*order_msg);
@@ -320,6 +375,20 @@ public:
         }
         if(count_1 == 0 && (!reached(arm_1_joint, arm_1_joint_goal) || fabs(arm_1_linear - arm_1_linear_goal) > 4e-3))
           break;
+        
+        //tackle update
+        if(shipments_1.size()>0){
+          for(int i=0;i<shipments_1[0].inv.size();i++){
+            if(shipments_1[0].finished[i] && shipments_1[0].inv[i]){
+              inv_1=i;
+              inv_x_1=shipments_1[0].position[i].first;
+              inv_y_1=shipments_1[0].position[i].second;
+              arm_1_state=INV;
+              goto e1;
+            }
+          }
+        }
+
         if(flip_lock>0){
           arm_1_state = FLIP;
           bin_num_1=0;
@@ -370,7 +439,7 @@ public:
         if(shipments_1.size()>0){
           for(int i=0;i<shipments_1[0].obj_t.size();i++){
             int item = shipments_1[0].obj_t[i];
-            if(shipments_1[0].finished[i]) continue;
+            if(shipments_1[0].finished[i] || shipments_1[0].inv[i]) continue;
             for(auto &tmp:events)
               if(tmp.second==item){
                 arm_1_state=BELT;
@@ -381,7 +450,7 @@ public:
         if(shipments_2.size()>0){
           for(int i=0;i<shipments_2[0].obj_t.size();i++){
             int item = shipments_2[0].obj_t[i];
-            if(shipments_2[0].finished[i]) continue;
+            if(shipments_2[0].finished[i] || shipments_2[0].inv[i]) continue;
             for(auto &tmp:events)
               if(tmp.second==item){
                 arm_1_state=BELT;
@@ -392,7 +461,7 @@ public:
         if(shipments_1.size()>0){
           for(int i=0;i<shipments_1[0].obj_t.size();i++){
             int item = shipments_1[0].obj_t[i];
-            if(shipments_1[0].finished[i]) continue;
+            if(shipments_1[0].finished[i] || shipments_1[0].inv[i]) continue;
             for(int j=4;j<=6;j++){
               if(bin_type[j]==item){
                 bin_num_1=j;
@@ -406,7 +475,7 @@ public:
         if(shipments_2.size()>0){
           for(int i=0;i<shipments_2[0].obj_t.size();i++){
             int item = shipments_2[0].obj_t[i];
-            if(shipments_2[0].finished[i]) continue;
+            if(shipments_2[0].finished[i] || shipments_2[0].inv[i]) continue;
             for(int j=4;j<=6;j++){
               if(bin_type[j]==item){
                 bin_num_1=j;
@@ -441,7 +510,7 @@ public:
           if(shipments_1.size()>0){
             for(int i=0;i<shipments_1[0].obj_t.size();i++){
               int item = shipments_1[0].obj_t[i];
-              if(shipments_1[0].finished[i]) continue;
+              if(shipments_1[0].finished[i] || shipments_1[0].inv[i]) continue;
               for(int j=0;j<events.size();j++)
                 if(item==events[j].second){
                   ind = j;
@@ -452,7 +521,7 @@ public:
           if(shipments_2.size()>0){
             for(int i=0;i<shipments_2[0].obj_t.size();i++){
               int item = shipments_2[0].obj_t[i];
-              if(shipments_2[0].finished[i]) continue;
+              if(shipments_2[0].finished[i] || shipments_2[0].inv[i]) continue;
               for(int j=0;j<events.size();j++)
                 if(item==events[j].second){
                   ind = j;
@@ -509,7 +578,9 @@ public:
         count_1++;
         // cout<<count_1<<endl;
         if(count_1>160){
-          arm_1_joint_goal = arm_1_joint;
+          close_gripper(1);
+          send_arm_to_state(arm_1_joint_trajectory_publisher_,
+              rest_joints, 0.6, arm_1_linear);
           arm_1_state = IDLE, count_1=0;
         }
         break;
@@ -537,7 +608,7 @@ public:
           if(shipments_1.size()>0){
             for(int i=0;i<shipments_1[0].obj_t.size();i++){
               int item = shipments_1[0].obj_t[i];
-              if(shipments_1[0].finished[i]) continue;
+              if(shipments_1[0].finished[i] || shipments_1[0].inv[i]) continue;
               for(auto &tmp:events)
                 if(tmp.second==item){
                   tag=true;
@@ -548,7 +619,7 @@ public:
           if(shipments_2.size()>0){
             for(int i=0;i<shipments_2[0].obj_t.size();i++){
               int item = shipments_2[0].obj_t[i];
-              if(shipments_2[0].finished[i]) continue;
+              if(shipments_2[0].finished[i] || shipments_2[0].inv[i]) continue;
               for(auto &tmp:events)
                 if(tmp.second==item){
                   tag=true;
@@ -591,7 +662,7 @@ public:
             y_r_1 = divy_1;
             if(shipments_1.size()>0){
               for(int i=0;i<shipments_1[0].obj_t.size();i++){
-                if(!shipments_1[0].finished[i] && type_1 == shipments_1[0].obj_t[i]){
+                if((!shipments_1[0].finished[i] && !shipments_1[0].inv[i])&& type_1 == shipments_1[0].obj_t[i]){
                   
                   //real lock in the future, if getting into problem
                   if(flipped_1 == shipments_1[0].flipped[i]){           
@@ -620,7 +691,7 @@ public:
 
             if(shipments_2.size()>0){
               for(int i=0;i<shipments_2[0].obj_t.size();i++){
-                if(!shipments_2[0].finished[i] && type_1 == shipments_2[0].obj_t[i]){
+                if((!shipments_2[0].finished[i] && !shipments_2[0].inv[i])&& type_1 == shipments_2[0].obj_t[i]){
                   if(flipped_1 != shipments_2[0].flipped[i]){
                     if(flip_lock==0){
                       flip_lock=1;
@@ -637,7 +708,7 @@ public:
 
             if(shipments_2.size()>0){
               for(int i=0;i<shipments_2[0].obj_t.size();i++){
-                if(!shipments_2[0].finished[i] && type_1 == shipments_2[0].obj_t[i]){
+                if((!shipments_2[0].finished[i] && !shipments_2[0].inv[i]) && type_1 == shipments_2[0].obj_t[i]){
                   if(flipped_1 == shipments_2[0].flipped[i]){
                     if(!trans_lock){
                       trans_lock=true;
@@ -654,7 +725,7 @@ public:
 
             if(shipments_1.size()>0){
               for(int i=0;i<shipments_1[0].obj_t.size();i++){
-                if(!shipments_1[0].finished[i] && type_1 == shipments_1[0].obj_t[i]){
+                if((!shipments_1[0].finished[i] && !shipments_1[0].inv[i]) && type_1 == shipments_1[0].obj_t[i]){
                   
                   //real lock in the future, if getting into problem
                   if(flipped_1 != shipments_1[0].flipped[i]){
@@ -872,6 +943,53 @@ public:
           }
         }
         break;
+      case INV:
+        if(count_1==0){
+          send_arm_to_state(arm_1_joint_trajectory_publisher_, 
+            invkinematic(vector<double>{0.00001 + inv_x_1, -1.05 + inv_y_1, -0.06}), 
+            1.1, 1.18);
+          count_1++;
+          fail_1 = 0;
+        }
+        else if(count_1==1){
+          if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3){
+            open_gripper(1);
+            auto p1 = invkinematic(vector<double>{0.00001 + inv_x_1, -1.05 + inv_y_1, -0.1});
+            auto p2 = invkinematic(vector<double>{0.00001 + inv_x_1, -1.05 + inv_y_1, -0.23});
+            auto p3 = invkinematic(vector<double>{0.00001 + inv_x_1, -1.05 + inv_y_1, -0.06});
+            
+            send_arm_to_state_n(
+              arm_1_joint_trajectory_publisher_, 
+              vector<vector<double>>{p1,p2,p2,p3},
+              vector<double>{0.45, 0.9, 1.3, 1.7}, vector<double>{1.18,1.18,1.18,1.18}
+              );
+            count_1++;
+          }
+        }
+        else if(count_1<4){
+          if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3){
+            if(catched_1){
+              send_arm_to_state(
+                arm_1_joint_trajectory_publisher_,
+                rest_joints, 1, 0.5
+                );
+              count_1=0;
+              arm_1_state = CLASSIFY;
+              shipments_1[0].finished[inv_1]=false;
+              break;
+            }
+            count_1=1;
+            fail_1++;
+            if(fail_1==4){
+              arm_1_state = IDLE;
+              shipments_1[0].finished[inv_1]=false;
+              count_1=0;
+              fail_1=0;
+              close_gripper(1);
+            }
+          }
+        }
+        break;
       case FLIP:
         if(count_1==0){
           send_arm_to_state(arm_1_joint_trajectory_publisher_, flip_pose_1, 0.5, -0.03);
@@ -904,6 +1022,7 @@ public:
           }
         }
         break;
+      
     }
 
 
@@ -918,6 +1037,10 @@ public:
   bool dir_2 = true;
   
   int count_1=0, count_2=0;
+
+  int inv_1=-1, inv_2=-1;
+  double inv_x_1, inv_y_1;
+  double inv_x_2, inv_y_2;
 
   vector<map<pair<double,double>, int>> bin_mem;
 
@@ -1065,6 +1188,18 @@ public:
         // send_arm_to_state( arm_2_joint_trajectory_publisher_, invkinematic(vector<double>{0.001, 1.05, -0.1}), 0.3, -1.18);break;
         if(count_2==0 && (!reached(arm_2_joint, arm_2_joint_goal) || fabs(arm_2_linear - arm_2_linear_goal) > 4e-3))
           break;
+        //tacke update
+        if(shipments_2.size()>0){
+          for(int i=0;i<shipments_2[0].inv.size();i++){
+            if(shipments_2[0].finished[i] && shipments_2[0].inv[i]){
+              inv_2=i;
+              inv_x_2=shipments_2[0].position[i].first;
+              inv_y_2=shipments_2[0].position[i].second;
+              arm_2_state=INV;
+              goto e2;
+            }
+          }
+        }
         if(flip_lock>0){
           arm_2_state = FLIP;
           bin_num_2=0;
@@ -1115,7 +1250,7 @@ public:
         if(shipments_2.size()>0){
           for(int i=0;i<shipments_2[0].obj_t.size();i++){
             int item = shipments_2[0].obj_t[i];
-            if(shipments_2[0].finished[i]) continue;
+            if(shipments_2[0].finished[i] || shipments_2[0].inv[i]) continue;
             for(int j=1;j<=3;j++){
               if(bin_type[j]==item){
                 bin_num_2=j;
@@ -1129,7 +1264,7 @@ public:
         if(shipments_1.size()>0){
           for(int i=0;i<shipments_1[0].obj_t.size();i++){
             int item = shipments_1[0].obj_t[i];
-            if(shipments_1[0].finished[i]) continue;
+            if(shipments_1[0].finished[i] || shipments_1[0].inv[i]) continue;
             for(int j=1;j<=3;j++){
               if(bin_type[j]==item){
                 bin_num_2 = j;
@@ -1221,7 +1356,7 @@ public:
             if(shipments_2.size()>0){
 
               for(int i=0;i<shipments_2[0].obj_t.size();i++){
-                if(!shipments_2[0].finished[i] && type_2 == shipments_2[0].obj_t[i]){
+                if((!shipments_2[0].finished[i] && !shipments_2[0].inv[i]) && type_2 == shipments_2[0].obj_t[i]){
                   // cout<<shipments_2[0].obj_t[i]<<"----------type matched"<<endl;
 
                   if(flipped_2 == shipments_2[0].flipped[i]){
@@ -1250,7 +1385,7 @@ public:
 
             if(shipments_1.size()>0){
               for(int i=0;i<shipments_1[0].obj_t.size();i++){
-                if(!shipments_1[0].finished[i] && type_2 == shipments_1[0].obj_t[i]){
+                if((!shipments_1[0].finished[i] && !shipments_1[0].inv[i]) && type_2 == shipments_1[0].obj_t[i]){
                   if(flipped_2 != shipments_1[0].flipped[i]){
                     if(flip_lock==0){
                       flip_lock=2;
@@ -1267,7 +1402,7 @@ public:
 
             if(shipments_1.size()>0){
               for(int i=0;i<shipments_1[0].obj_t.size();i++){
-                if(!shipments_1[0].finished[i] && type_2 == shipments_1[0].obj_t[i]){
+                if((!shipments_1[0].finished[i] && !shipments_1[0].inv[i]) && type_2 == shipments_1[0].obj_t[i]){
                   if(flipped_2 == shipments_1[0].flipped[i]){
                     if(!trans_lock){
                       trans_lock=true;
@@ -1286,7 +1421,7 @@ public:
             if(shipments_2.size()>0){
 
               for(int i=0;i<shipments_2[0].obj_t.size();i++){
-                if(!shipments_2[0].finished[i] && type_2 == shipments_2[0].obj_t[i]){
+                if((!shipments_2[0].finished[i] && !shipments_2[0].inv[i]) && type_2 == shipments_2[0].obj_t[i]){
                   // cout<<shipments_2[0].obj_t[i]<<"----------type matched"<<endl;
                   if(flipped_2 != shipments_2[0].flipped[i]){
                     if(flip_lock==0){
@@ -1479,6 +1614,53 @@ public:
               count_2=0;
             }
             break;
+          }
+        }
+        break;
+      case INV:
+        if(count_2==0){
+          send_arm_to_state(arm_2_joint_trajectory_publisher_, 
+            invkinematic(vector<double>{0.00001 + inv_x_2,  1.05 - inv_y_2, -0.1}), 
+            1.1, -1.18);
+          count_2++;
+          fail_2 = 0;
+        }
+        else if(count_2==1){
+          if(reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear - arm_2_linear_goal) <= 4e-3){
+            open_gripper(1);
+            auto p1 = invkinematic(vector<double>{0.00001 + inv_x_2,  1.05 - inv_y_2, -0.1});
+            auto p2 = invkinematic(vector<double>{0.00001 + inv_x_2,  1.05 - inv_y_2, -0.23});
+            auto p3 = invkinematic(vector<double>{0.00001 + inv_x_2,  1.05 - inv_y_2, -0.06});
+            
+            send_arm_to_state_n(
+              arm_2_joint_trajectory_publisher_, 
+              vector<vector<double>>{p1,p2,p2,p3},
+              vector<double>{0.45, 0.9, 1.3, 1.7}, vector<double>{-1.18,-1.18,-1.18,-1.18}
+              );
+            count_2++;
+          }
+        }
+        else if(count_2<4){
+          if(reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear - arm_2_linear_goal) <= 4e-3){
+            if(catched_2){
+              send_arm_to_state(
+                arm_2_joint_trajectory_publisher_,
+                rest_joints, 1, 0.5
+                );
+              count_2=0;
+              arm_2_state = CLASSIFY;
+              shipments_2[0].finished[inv_2]=false;
+              break;
+            }
+            count_2=1;
+            fail_2++;
+            if(fail_2==4){
+              arm_2_state = IDLE;
+              shipments_2[0].finished[inv_2]=false;
+              count_2=0;
+              fail_2=0;
+              close_gripper(2);
+            }
           }
         }
         break;

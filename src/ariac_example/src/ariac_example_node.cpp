@@ -232,7 +232,9 @@ public:
       //see whether it's an update
       int i;
       bool update = false;
-      int n = bin_t2int(item.agv_id);
+      int n = -1;
+      if(item.agv_id[1]=='g')
+        n = bin_t2int(item.agv_id);
       for(i=0;i<shipments_1.size();i++){
         if(shipments_1[i].shipment_t == item.shipment_type){
           update = true;
@@ -241,14 +243,26 @@ public:
         }
       }
       if(update){
-        n=3;
         tmp = &shipments_1[i];
         if(i>0){
           tmp->position.clear();tmp->obj_t.clear();tmp->theta.clear();
           tmp->inv.clear(); tmp->finished.clear();tmp->flipped.clear();
+          if(n!=1){
+            shipments_1.erase(shipments_1.begin()+i);
+            n = bin_t2int(item.agv_id);
+          }
+          else{
+            n = 3;
+          }
         }
         else{
           //fetch from tray
+          if(n==2){
+            fill(tmp->inv.begin(),tmp->inv.end(),true);
+            // shipments_2.resize(shipments_2.size()+1);
+            // tmp = &shipments_2[shipments_2.size()-1];
+          }
+          else n=bin_t2int(item.agv_id);
           fill(tmp->inv.begin(),tmp->inv.end(),true);
         }
       }
@@ -265,14 +279,28 @@ public:
           if(i>0){
             tmp->position.clear();tmp->obj_t.clear();tmp->theta.clear();
             tmp->inv.clear(); tmp->finished.clear();tmp->flipped.clear();
+            if(n!=2){
+              shipments_1.erase(shipments_1.begin()+i);
+              n = bin_t2int(item.agv_id);
+            }
+            else{
+              n = 3;
+            }
           }
           else{
             //fetch from tray
+            if(n==1){
+              fill(tmp->inv.begin(),tmp->inv.end(),true);
+              // shipments_1.resize(shipments_1.size()+1);
+              // tmp = &shipments_1[shipments_1.size()-1];
+            }
+            else n=bin_t2int(item.agv_id);
             fill(tmp->inv.begin(),tmp->inv.end(),true);
           }
         }
       }
-      
+      if(n==-1)
+        n = bin_t2int(item.agv_id);
       if(1/*!update*/){
         if(n==1) {
           shipments_1.resize(shipments_1.size()+1);
@@ -357,12 +385,28 @@ public:
     }
     if(shipments_1.size()>0 && !agv1_state){
       bool f = true;
-      for(bool i: shipments_1[0].finished){
-        if(!i){f=false;break;}
+      for(int i=0;i<shipments_1[0].inv.size();i++){
+        if(!shipments_1[0].inv[i] || shipments_1[0].finished[i]){
+          f=false;break;
+        }
       }
-      if(f) {
-        agv(1, shipments_1[0].shipment_t);
-        // shipments_1.erase(shipments_1.begin());
+      if(f){
+        shipments_1.erase(shipments_1.begin());
+      }
+      else{
+        f=true;
+        for(int i=0;i<shipments_1[0].inv.size();i++){
+          if(shipments_1[0].inv[i] && shipments_1[0].finished[i]){
+            f=false;break;
+          }
+          if(!shipments_1[0].inv[i] && !shipments_1[0].finished[i]){
+            f=false;break;
+          }
+        }
+        if(f) {
+          agv(1, shipments_1[0].shipment_t);
+          // shipments_1.erase(shipments_1.begin());
+        }
       }
     }
     // cout<< arm_1_state<<endl;
@@ -383,6 +427,7 @@ public:
               inv_1=i;
               inv_x_1=shipments_1[0].position[i].first;
               inv_y_1=shipments_1[0].position[i].second;
+              bin_num_1=0;
               arm_1_state=INV;
               goto e1;
             }
@@ -954,9 +999,9 @@ public:
         else if(count_1==1){
           if(reached(arm_1_joint, arm_1_joint_goal) && fabs(arm_1_linear - arm_1_linear_goal) <= 4e-3){
             open_gripper(1);
-            auto p1 = invkinematic(vector<double>{0.00001 + inv_x_1, -1.05 + inv_y_1, -0.1});
+            auto p1 = invkinematic(vector<double>{0.00001 + inv_x_1, -1.05 + inv_y_1, -0.06});
             auto p2 = invkinematic(vector<double>{0.00001 + inv_x_1, -1.05 + inv_y_1, -0.23});
-            auto p3 = invkinematic(vector<double>{0.00001 + inv_x_1, -1.05 + inv_y_1, -0.06});
+            auto p3 = invkinematic(vector<double>{0.00001 + inv_x_1, -1.05 + inv_y_1, -0.05 + double(fail_1)/100});
             
             send_arm_to_state_n(
               arm_1_joint_trajectory_publisher_, 
@@ -1037,6 +1082,8 @@ public:
   bool dir_2 = true;
   
   int count_1=0, count_2=0;
+
+  ros::Time inv_s_1, inv_s_2;
 
   int inv_1=-1, inv_2=-1;
   double inv_x_1, inv_y_1;
@@ -1174,13 +1221,30 @@ public:
     //       cout<<endl;
     if(shipments_2.size()>0 && !agv2_state){
       bool f = true;
-      for(bool i: shipments_2[0].finished){
-        if(!i){f=false;break;}
+      for(int i=0;i<shipments_2[0].inv.size();i++){
+        if(!shipments_2[0].inv[i] || shipments_2[0].finished[i]){
+          f=false;break;
+        }
       }
-      if(f) {
-        agv(2,shipments_2[0].shipment_t);
-        // shipments_2.erase(shipments_2.begin());
+      if(f){
+        shipments_2.erase(shipments_2.begin());
       }
+      else{
+        f=true;
+        for(int i=0;i<shipments_2[0].inv.size();i++){
+          if(shipments_2[0].inv[i] && shipments_2[0].finished[i]){
+            f=false;break;
+          }
+          if(!shipments_2[0].inv[i] && !shipments_2[0].finished[i]){
+            f=false;break;
+          }
+        }
+        if(f) {
+          agv(2, shipments_2[0].shipment_t);
+          // shipments_1.erase(shipments_1.begin());
+        }
+      }
+      
     }
     switch(arm_2_state){
       case IDLE:
@@ -1196,6 +1260,7 @@ public:
               inv_x_2=shipments_2[0].position[i].first;
               inv_y_2=shipments_2[0].position[i].second;
               arm_2_state=INV;
+              bin_num_2=0;
               goto e2;
             }
           }
@@ -1628,9 +1693,9 @@ public:
         else if(count_2==1){
           if(reached(arm_2_joint, arm_2_joint_goal) && fabs(arm_2_linear - arm_2_linear_goal) <= 4e-3){
             open_gripper(1);
-            auto p1 = invkinematic(vector<double>{0.00001 + inv_x_2,  1.05 - inv_y_2, -0.1});
+            auto p1 = invkinematic(vector<double>{0.00001 + inv_x_2,  1.05 - inv_y_2, -0.06});
             auto p2 = invkinematic(vector<double>{0.00001 + inv_x_2,  1.05 - inv_y_2, -0.23});
-            auto p3 = invkinematic(vector<double>{0.00001 + inv_x_2,  1.05 - inv_y_2, -0.06});
+            auto p3 = invkinematic(vector<double>{0.00001 + inv_x_2,  1.05 - inv_y_2, -0.05 + double(fail_2)/100});
             
             send_arm_to_state_n(
               arm_2_joint_trajectory_publisher_, 

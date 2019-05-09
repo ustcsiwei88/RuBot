@@ -449,7 +449,7 @@ public:
               desk_hand_1_7, desk_hand_1_8, desk_hand_1_8,
               desk_hand_1_9, desk_hand_1_10, desk_hand_1_10, 
               desk_hand_1_11, desk_hand_1_12, desk_hand_1_12
-            }, vector<double>{1.5 , 3.0 , 3.2 , 3.6 , 3.9 , 4.1 , 4.5 , 4.8 , 5.0 , 5.4 , 5.7 , 5.9 , 6.3 , 6.5 , 6.7},
+            }, vector<double>{1.3 , 2.8 , 3.2 , 3.6 , 3.9 , 4.1 , 4.5 , 4.8 , 5.0 , 5.4 , 5.7 , 5.9 , 6.3 , 6.5 , 6.7},
             vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,0.0, 0.0, 0.0, 0.0, 0.0, 0.0,0.0,0.0});
             count_1+=2;
           }
@@ -581,7 +581,7 @@ public:
             break;
           }
           ros::Duration tmp = ros::Time::now() - events[ind].first;
-          double ttc = 2.5;
+          double ttc = 2.8;
           double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.55 + 0.005;
           // if(events[ind].second==3) dist -= 0.015;
           if(events[ind].second==5) dist -= 0.07;
@@ -592,10 +592,10 @@ public:
           
           send_arm_to_state_n(arm_1_joint_trajectory_publisher_, 
             vector<vector<double>>{
-              invkinematic_belt(vector<double>{-0.92, 0.02, 0.05}), 
-              invkinematic_belt(vector<double>{-0.92, 0.02, -0.07})
-            }, vector<double>{ttc*3/5, ttc}, 
-            vector<double>{min(-dist + belt_power / 100 * maxBeltVel * ttc * 2/5, 1.18), -dist});
+              invkinematic_belt(vector<double>{-0.9175, 0.02, 0.05}), 
+              invkinematic_belt(vector<double>{-0.9175, 0.02, -0.07})
+            }, vector<double>{ttc*7/10, ttc}, 
+            vector<double>{min(-dist + belt_power / 100 * maxBeltVel * ttc * 3/10, 1.18), -dist});
           events.erase(events.begin()+ind);
           // cout<<"event size after del "<<events.size()<<endl;
           open_gripper(1);
@@ -1062,7 +1062,7 @@ public:
           }
           if(count_1==1 && reached(arm_1_joint, flip_pose_1)){
             open_gripper(1);
-            send_arm_to_state(arm_1_joint_trajectory_publisher_, flip_pose_1, 1.5, -0.28);
+            send_arm_to_state(arm_1_joint_trajectory_publisher_, flip_pose_1, 1.5, -0.235);
             count_1++;
           }
         }
@@ -1282,7 +1282,7 @@ public:
               desk_hand_2_7, desk_hand_2_8, desk_hand_2_8,
               desk_hand_2_9, desk_hand_2_10, desk_hand_2_10, 
               desk_hand_2_11, desk_hand_2_12, desk_hand_2_12
-            }, vector<double>{1.5 , 3.0 , 3.2 , 3.6 , 3.9 , 4.1 , 4.5 , 4.8 , 5.0 , 5.4 , 5.7 , 5.9 , 6.3 , 6.5 , 6.7}, 
+            }, vector<double>{1.3 , 2.8 , 3.2 , 3.6 , 3.9 , 4.1 , 4.5 , 4.8 , 5.0 , 5.4 , 5.7 , 5.9 , 6.3 , 6.5 , 6.7}, 
             vector<double>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,0.0, 0.0, 0.0, 0.0, 0.0, 0.0,0.0,0.0});
             count_2+=2;
           }
@@ -1756,7 +1756,7 @@ public:
           }
           if(count_2==1 && reached(arm_2_joint, flip_pose_2)){
             open_gripper(2);
-            send_arm_to_state(arm_2_joint_trajectory_publisher_, flip_pose_2, 1.5, 0.28);
+            send_arm_to_state(arm_2_joint_trajectory_publisher_, flip_pose_2, 1.5, 0.235);
             count_2++;
           }
         }

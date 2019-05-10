@@ -235,8 +235,6 @@ public:
       int i;
       bool update = false;
       int n = -1;
-      if(item.agv_id[1]=='g')
-        n = bin_t2int(item.agv_id);
       for(i=0;i<shipments_1.size();i++){
         if(shipments_1[i].shipment_t == item.shipment_type){
           update = true;
@@ -245,28 +243,7 @@ public:
         }
       }
       if(update){
-        tmp = &shipments_1[i];
-        if(i>0){
-          tmp->position.clear();tmp->obj_t.clear();tmp->theta.clear();
-          tmp->inv.clear(); tmp->finished.clear();tmp->flipped.clear();
-          if(n!=1){
-            shipments_1.erase(shipments_1.begin()+i);
-            n = bin_t2int(item.agv_id);
-          }
-          else{
-            n = 3;
-          }
-        }
-        else{
-          //fetch from tray
-          if(n==2){
-            fill(tmp->inv.begin(),tmp->inv.end(),true);
-            // shipments_2.resize(shipments_2.size()+1);
-            // tmp = &shipments_2[shipments_2.size()-1];
-          }
-          else n=bin_t2int(item.agv_id);
-          fill(tmp->inv.begin(),tmp->inv.end(),true);
-        }
+        fill(shipments_1[i].inv.begin(),shipments_1[i].inv.end(),true);
       }
       else{
         for(i=0;i<shipments_2.size();i++){
@@ -276,33 +253,32 @@ public:
           }
         }
         if(update){
-          n=3;
-          tmp = &shipments_2[i];
-          if(i>0){
-            tmp->position.clear();tmp->obj_t.clear();tmp->theta.clear();
-            tmp->inv.clear(); tmp->finished.clear();tmp->flipped.clear();
-            if(n!=2){
-              shipments_1.erase(shipments_1.begin()+i);
-              n = bin_t2int(item.agv_id);
-            }
-            else{
-              n = 3;
-            }
-          }
-          else{
-            //fetch from tray
-            if(n==1){
-              fill(tmp->inv.begin(),tmp->inv.end(),true);
-              // shipments_1.resize(shipments_1.size()+1);
-              // tmp = &shipments_1[shipments_1.size()-1];
-            }
-            else n=bin_t2int(item.agv_id);
-            fill(tmp->inv.begin(),tmp->inv.end(),true);
-          }
+          fill(shipments_2[i].inv.begin(),shipments_2[i].inv.end(),true);
         }
       }
-      if(n==-1)
-        n = bin_t2int(item.agv_id);
+      // if(shipments_1.size()>0){
+      //   bool f=true;
+      //   if(f){
+      //     for(int i=0;i<shipments_1[0].inv.size();i++){
+      //       if(!shipments_1[0].inv[i] || shipments_1[1].finished[i]){
+      //         f=false;
+      //       }
+      //     }
+      //     if(f) shipments_1.erase(shipments_1.begin());
+      //   }
+      // }
+      // if(shipments_2.size()>0){
+      //   bool f=true;
+      //   if(f){
+      //     for(int i=0;i<shipments_2[0].inv.size();i++){
+      //       if(!shipments_2[0].inv[i] || shipments_2[1].finished[i]){
+      //         f=false;
+      //       }
+      //     }
+      //     if(f) shipments_2.erase(shipments_2.begin());
+      //   }
+      // }
+      n = bin_t2int(item.agv_id);
       if(1/*!update*/){
         if(n==1) {
           shipments_1.resize(shipments_1.size()+1);
@@ -331,22 +307,16 @@ public:
             // cout<<" type, "<<item1.type<<"  angle "<<*tmp->theta.rbegin()<<endl;
           }
           else{
-            tmp->theta.push_back(-atan2(2*(z*w+y*x), 1-2*(z*z+y*y)));
+            tmp->theta.push_back(atan2(2*(z*w+y*x), 1-2*(z*z+y*y)));
           }
           if(z*z+w*w-y*y-x*x < 0){
             tmp->flipped.push_back(true);
           }
           else tmp->flipped.push_back(false);
         }
-        if(n!=3){
-          tmp->finished.resize(tmp->position.size(),false);
-          tmp->inv.resize(tmp->position.size(),false);
-        }
-        else{
-          for(int j=0;j<item.products.size();j++){
-            tmp->inv.push_back(false);tmp->finished.push_back(false);
-          }
-        }
+        tmp->finished.resize(tmp->position.size(),false);
+        tmp->inv.resize(tmp->position.size(),false);
+        
       }
     }
     // for(auto &: order_msg->shipment)
@@ -596,8 +566,8 @@ public:
             vector<vector<double>>{
               invkinematic_belt(vector<double>{-0.9175, 0.02, 0.05}), 
               invkinematic_belt(vector<double>{-0.9175, 0.02, -0.07})
-            }, vector<double>{ttc*7/10, ttc}, 
-            vector<double>{min(-dist + belt_power / 100 * maxBeltVel * ttc * 3/10, 1.18), -dist});
+            }, vector<double>{ttc*3/5, ttc}, 
+            vector<double>{min(-dist + belt_power / 100 * maxBeltVel * ttc * 2/5, 1.18), -dist});
           events.erase(events.begin()+ind);
           // cout<<"event size after del "<<events.size()<<endl;
           open_gripper(1);
@@ -927,9 +897,9 @@ public:
           // send_arm_to_state(arm_2_joint_trajectory_publisher_, rest_joints, 
           //   0.5, 0);
 
-          //wait 0.4 sec to drop
+          //wait 0.8 sec to drop
           if(des_1 == 1){
-            if(count_1 == 20){
+            if(count_1 == 40){
               if(faul_1){
                 cout<<"caught faulty product"<<endl;
                 arm_1_state = FAULTY;
@@ -1622,7 +1592,7 @@ public:
           arm_2_state = IDLE;
 
           if(des_2 == 1){
-            if(count_2 == 20){
+            if(count_2 == 40){
               if(faul_2){
                 cout<<"caught faulty product"<<endl;
                 arm_2_state = FAULTY;

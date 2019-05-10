@@ -3,5 +3,5 @@
 . ~/rubot/install/setup.bash
 cd ~/rubot
 source devel/setup.bash
-sleep 5s
+sleep 10s
 rosrun ariac_example ariac_example_node

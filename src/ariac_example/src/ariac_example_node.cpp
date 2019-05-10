@@ -2388,8 +2388,6 @@ private:
 int main(int argc, char ** argv) {
   // Last argument is the default name of the node.
   
-  this_thread::sleep_for(10s);
-  
   ros::init(argc, argv, "ariac_example_node");
 
   ros::NodeHandle node;

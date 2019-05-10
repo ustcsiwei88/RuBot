@@ -45,6 +45,8 @@
 
 #include <trajectory_msgs/JointTrajectory.h>
 
+#include <thread>
+
 #define PI_2 6.283185307179586
 #define PI 3.141592653589793
 
@@ -2385,6 +2387,9 @@ private:
 // %Tag(MAIN)%
 int main(int argc, char ** argv) {
   // Last argument is the default name of the node.
+  
+  this_thread::sleep_for(4s);
+  
   ros::init(argc, argv, "ariac_example_node");
 
   ros::NodeHandle node;
@@ -2455,7 +2460,9 @@ int main(int argc, char ** argv) {
     &MyCompetitionClass::quality_ctrl_2, &comp_class);
   
   ROS_INFO("Setup complete.");
+
   start_competition(node);
+  
   ros::spin();  // This executes callbacks on new data until ctrl-c.
 
   return 0;

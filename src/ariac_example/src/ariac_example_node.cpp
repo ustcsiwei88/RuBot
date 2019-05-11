@@ -63,6 +63,8 @@ vector<double> kinematic(vector<double> theta);
 vector<double> invkinematic(vector<double> pose);
 vector<double> invkinematic_belt(vector<double> pose);
 
+ros::Time start_stamp;
+
 enum State{
   IDLE,
   BELT,
@@ -102,6 +104,7 @@ void start_competition(ros::NodeHandle & node) {
   } else {
     ROS_INFO("Competition started!");
   }
+  start_stamp = ros::Time::now();
 }
 // %EndTag(START_COMP)%
 class Shipment{
@@ -360,6 +363,9 @@ public:
       return;
     }
     if(shipments_1.size()>0 && !agv1_state){
+      if((ros::Time::now()-start_stamp).toSec() > 495){
+        agv(1, shipments_1[0].shipment_t);return;
+      }
       bool f = true;
       for(int i=0;i<shipments_1[0].inv.size();i++){
         if(!shipments_1[0].inv[i] || shipments_1[0].finished[i]){
@@ -1202,6 +1208,9 @@ public:
     //     for(double ii: arm_2_joint_goal) cout<< ii<<" ";
     //       cout<<endl;
     if(shipments_2.size()>0 && !agv2_state){
+      if((ros::Time::now()-start_stamp).toSec()>495){
+        agv(2, shipments_2[0].shipment_t); return;
+      }
       bool f = true;
       for(int i=0;i<shipments_2[0].inv.size();i++){
         if(!shipments_2[0].inv[i] || shipments_2[0].finished[i]){

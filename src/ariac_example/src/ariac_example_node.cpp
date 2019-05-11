@@ -108,6 +108,7 @@ class Shipment{
 public:
   int priority;
   int agv;
+  int c;
   vector<pair<double,double>> position;
   vector<double> theta;
   vector<int> obj_t;
@@ -115,7 +116,7 @@ public:
   vector<bool> finished;
   vector<bool> inv;
   string shipment_t;
-  Shipment(int priority=100):priority(priority){
+  Shipment(int priority=100, int c=0):priority(priority), c(c){
   }
 };
 /// Example class that can hold state and provide methods that handle incoming data.
@@ -379,7 +380,10 @@ public:
           }
         }
         if(f) {
-          agv(1, shipments_1[0].shipment_t);
+          shipments_1[0].c++;
+          if(shipments_1[0].c==50){
+            agv(1, shipments_1[0].shipment_t);
+          }
           // shipments_1.erase(shipments_1.begin());
         }
       }
@@ -1218,7 +1222,10 @@ public:
           }
         }
         if(f) {
-          agv(2, shipments_2[0].shipment_t);
+          shipments_2[0].c++;
+          if(shipments_2[0].c==50){
+            agv(2, shipments_2[0].shipment_t);
+          }
           // shipments_1.erase(shipments_1.begin());
         }
       }

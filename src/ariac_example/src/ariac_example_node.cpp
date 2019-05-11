@@ -350,9 +350,12 @@ public:
     arm_1_joint[5] = arm_1_current_joint_states_.position[6]; //wrist3
     arm_1_linear = arm_1_current_joint_states_.position[1]; //linear
     if (!arm_1_has_been_zeroed_) {
-      arm_1_has_been_zeroed_ = true;
-      ROS_INFO("Sending arm to zero joint positions...");
-      send_arm_to_zero_state(arm_1_joint_trajectory_publisher_);
+      // arm_1_has_been_zeroed_ = true;
+      // ROS_INFO("Sending arm to zero joint positions...");
+      if(reached(arm_1_joint, rest_joints)){
+        arm_1_has_been_zeroed_ = true;
+      }
+      else send_arm_to_zero_state(arm_1_joint_trajectory_publisher_);
       return;
     }
     if(shipments_1.size()>0 && !agv1_state){
@@ -897,9 +900,9 @@ public:
           // send_arm_to_state(arm_2_joint_trajectory_publisher_, rest_joints, 
           //   0.5, 0);
 
-          //wait 0.8 sec to drop
+          //wait 0.4 sec to drop
           if(des_1 == 1){
-            if(count_1 == 40){
+            if(count_1 == 20){
               if(faul_1){
                 cout<<"caught faulty product"<<endl;
                 arm_1_state = FAULTY;
@@ -1180,9 +1183,12 @@ public:
     arm_2_linear = arm_2_current_joint_states_.position[1]; //linear
 
     if (!arm_2_has_been_zeroed_) {
-      arm_2_has_been_zeroed_ = true;
-      ROS_INFO("Sending arm 2 to zero joint positions...");
-      send_arm_to_zero_state(arm_2_joint_trajectory_publisher_);
+      // arm_2_has_been_zeroed_ = true;
+      // ROS_INFO("Sending arm 2 to zero joint positions...");
+      if(reached(arm_2_joint, rest_joints)){
+        arm_2_has_been_zeroed_ = true;
+      }
+      else send_arm_to_zero_state(arm_2_joint_trajectory_publisher_);
       return;
     }
 
@@ -1592,7 +1598,7 @@ public:
           arm_2_state = IDLE;
 
           if(des_2 == 1){
-            if(count_2 == 40){
+            if(count_2 == 20){
               if(faul_2){
                 cout<<"caught faulty product"<<endl;
                 arm_2_state = FAULTY;
@@ -1765,11 +1771,11 @@ public:
     if(joint_trajectory_publisher == arm_1_joint_trajectory_publisher_){
       arm_1_linear_goal = 1.0, arm_1_joint_goal=rest_joints, close_gripper(1);msg.points[0].positions[6]=1.0;
     }
-    else{
+    else if(joint_trajectory_publisher == arm_2_joint_trajectory_publisher_){
       arm_2_linear_goal = -1.0, arm_2_joint_goal=rest_joints, close_gripper(2);msg.points[0].positions[6]=-1.0;
     }
     // How long to take getting to the point (floating point seconds).
-    msg.points[0].time_from_start = ros::Duration(0.5);
+    // msg.points[0].time_from_start = ros::Duration(0.5);
     // ROS_INFO_STREAM("Sending command:\n" << msg);
     joint_trajectory_publisher.publish(msg);
   }
@@ -2359,7 +2365,7 @@ int main(int argc, char ** argv) {
   // Last argument is the default name of the node.
   
   ros::init(argc, argv, "ariac_example_node");
-
+  
   ros::NodeHandle node;
 
   // Instance of custom class from above.

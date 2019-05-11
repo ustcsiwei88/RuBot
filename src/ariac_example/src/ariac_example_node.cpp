@@ -799,8 +799,8 @@ public:
             while(p1[5]<=-PI) p1[5]+=PI_2;
             p2[5]=p1[5];
             send_arm_to_state_n(arm_1_joint_trajectory_publisher_, 
-              vector<vector<double>>{p1,p2},
-              vector<double>{2,3}, vector<double>{1.18, 1.18});
+              vector<vector<double>>{arm_1_joint, p1, p2},
+              vector<double>{0.4, 2.5, 3.5}, vector<double>{0.3, 1.18, 1.18});
             arm_1_state = TRANSFER;
           }
           else if(des_1==2){
@@ -1496,8 +1496,8 @@ public:
             while(p1[5]<=-PI) p1[5]+=PI_2;
             p2[5]=p1[5];
             send_arm_to_state_n(arm_2_joint_trajectory_publisher_, 
-              vector<vector<double>>{p1,p2},
-              vector<double>{2, 3}, vector<double>{-1.18, -1.18});
+              vector<vector<double>>{arm_2_joint, p1, p2},
+              vector<double>{0.4, 2.5, 3.5}, vector<double>{-0.3, -1.18, -1.18});
             arm_2_state=TRANSFER;
           }
           else if(des_2==2){

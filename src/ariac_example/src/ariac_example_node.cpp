@@ -1769,10 +1769,10 @@ public:
     msg.points[0].positions = rest_joints;
     msg.points[0].positions.push_back(0);
     if(joint_trajectory_publisher == arm_1_joint_trajectory_publisher_){
-      arm_1_linear_goal = 0.5, arm_1_joint_goal=rest_joints, close_gripper(1);msg.points[0].positions[6]=1.0;
+      arm_1_linear_goal = 0.5, arm_1_joint_goal=rest_joints, close_gripper(1);msg.points[0].positions[6]=0.5;
     }
     else if(joint_trajectory_publisher == arm_2_joint_trajectory_publisher_){
-      arm_2_linear_goal = -0.5, arm_2_joint_goal=rest_joints, close_gripper(2);msg.points[0].positions[6]=-1.0;
+      arm_2_linear_goal = -0.5, arm_2_joint_goal=rest_joints, close_gripper(2);msg.points[0].positions[6]=-0.5;
     }
     // How long to take getting to the point (floating point seconds).
     msg.points[0].time_from_start = ros::Duration(0.1);

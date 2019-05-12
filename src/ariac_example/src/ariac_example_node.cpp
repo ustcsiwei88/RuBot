@@ -568,7 +568,7 @@ public:
           ros::Duration tmp = ros::Time::now() - events[ind].first;
           double ttc = 2.8;
           double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.55 + 0.005;
-          // if(events[ind].second==3) dist -= 0.015;
+          if(events[ind].second==3) dist -= 0.017;
           if(events[ind].second==5) dist -= 0.07;
           // double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.25 - 0.06;
           //double linear = 0;
@@ -1149,7 +1149,7 @@ public:
       if(fum_2_init)p1 = invkinematic(vector<double>{-x+0.19, -0.03, z-0.9 + 0.6});
       else 
         p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.13});
-      auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9-0.010});
+      auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9-0.011});
       auto p3 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.16});
       // auto res = kinematic(p1);
       //auto p1 = invkinematic(vector<double>{-x+dx, dy, z+0.05});

@@ -861,7 +861,7 @@ public:
             }
             if(i==0){
               close_gripper(1);
-              //send_arm_to_zero_state(arm_1_joint_trajectory_publisher_);/
+              send_arm_to_state(arm_1_joint_trajectory_publisher_, arm_1_joint, 0.3, 0.3);
               arm_1_state = IDLE;
               break;
             }
@@ -874,15 +874,23 @@ public:
               // auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9+0.01});
               auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9 + 0.23});
               send_arm_to_state_n(arm_1_joint_trajectory_publisher_, vector<vector<double>>{
-                p1, p2}, 
-                vector<double>{0.6, 1}, 
-                vector<double>{y - arm_1_zero, y - arm_1_zero});
+                arm_1_joint, p1, p2}, 
+                vector<double>{0.25, 1.0, 1.4}, 
+                vector<double>{0.3, y - arm_1_zero, y - arm_1_zero});
               bin_mem[i-1][make_pair(dx,dy)]=0;
               arm_1_state = TRANSFER;
               bin_type[i] = type_1;
             }
             else{
-              des_1=2;break;
+              if(trans_lock){
+                close_gripper(1);
+                send_arm_to_state(arm_1_joint_trajectory_publisher_, arm_1_joint, 0.3, 0.3);
+                arm_1_state = IDLE;
+                break;
+              }
+              trans_lock=true;
+              des_1=2;
+              break;
               // if(count_1==0)
               //   send_arm_to_state_n(arm_1_joint_trajectory_publisher_, 
               //       vector<vector<double>>{desk_hand_1_1, desk_hand_1_2},
@@ -1570,7 +1578,7 @@ public:
             }
             if(i==7){
               close_gripper(2);
-              // send_arm_to_zero_state(arm_2_joint_trajectory_publisher_);
+              send_arm_to_state(arm_2_joint_trajectory_publisher_, classify_pos_2, 0.4, -0.3);
               arm_2_state = IDLE;
             }
             else if(i<4){
@@ -1581,14 +1589,20 @@ public:
               auto p1 = invkinematic(vector<double>{-x+dx, dy, z-0.9 + 0.6});
               auto p2 = invkinematic(vector<double>{-x+dx, dy, z-0.9 + 0.23});
               send_arm_to_state_n(arm_2_joint_trajectory_publisher_, vector<vector<double>>{
-                p1,p2}, 
-                vector<double>{0.6, 1}, 
-                vector<double>{y - arm_2_zero, y - arm_2_zero});
+                arm_2_joint, p1, p2}, 
+                vector<double>{0.25, 1.0, 1.4}, 
+                vector<double>{-0.3, y - arm_2_zero, y - arm_2_zero});
               arm_2_state = TRANSFER;
               bin_type[i] = type_2;
               bin_mem[i-1][make_pair(dx,dy)]=0;
             }
             else{
+              if(trans_lock){
+                close_gripper(2);
+                send_arm_to_state(arm_2_joint_trajectory_publisher_, arm_2_joint, 0.4, -0.3);
+                arm_2_state = IDLE;break;
+              }
+              trans_lock=true;
               des_2=2;break;
               // if(count_2==0)
               //   send_arm_to_state_n(arm_2_joint_trajectory_publisher_, 

@@ -568,9 +568,10 @@ public:
           }
           ros::Duration tmp = ros::Time::now() - events[ind].first;
           double ttc = 2.8;
-          double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.55 + 0.005;
-          if(events[ind].second==3) dist -= 0.017;
-          if(events[ind].second==5) dist -= 0.07;
+          double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.55 + 0.01;
+          if(events[ind].second==2) dist += 0.005;
+          if(events[ind].second==3) dist -= 0.022;
+          if(events[ind].second==5) dist -= 0.075;
           // double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.25 - 0.06;
           //double linear = 0;
           //if(fabs(dist)>0.1)
@@ -2153,7 +2154,7 @@ public:
     // }
   }
 
-  void agv_1_callback(std_msgs::String::ConstPtr &msg){
+  void agv_1_callback(const std_msgs::String::ConstPtr &msg){
     if(agv1_state){
       if(msg->data[0]=='r' && msg->data[2]=='a'){
         shipments_1.erase(shipments_1.begin());
@@ -2167,7 +2168,7 @@ public:
     }
   }
 
-  void agv_2_callback(std_msgs::String::ConstPtr &msg){
+  void agv_2_callback(const std_msgs::String::ConstPtr &msg){
     if(agv2_state){
       if(msg->data[0]=='r' && msg->data[2]=='a'){
         shipments_2.erase(shipments_2.begin());
@@ -2288,7 +2289,7 @@ private:
   const vector<double> desk_hand_1_0 = invkinematic(vector<double>{-0.00001, 0.92, 0.28});
 
   vector<double> desk_hand_1_1_pose {-0.00001, 0.92, 0.18};
-  vector<double> desk_hand_1_2_pose {-0.00001, 0.92, 0.1};
+  vector<double> desk_hand_1_2_pose {-0.00001, 0.92, 0.14};
 
   const vector<double> desk_hand_1_1 = invkinematic(vector<double>{-0.00001, 0.92, 0.17});
   const vector<double> desk_hand_1_2 = invkinematic(vector<double>{-0.00001, 0.92, 0.05});
@@ -2317,7 +2318,7 @@ private:
   const vector<double> desk_hand_2_0=invkinematic(vector<double>{-0.00001, -0.92, 0.27});  
 
   vector<double> desk_hand_2_1_pose {-0.00001, -0.92, 0.18};
-  vector<double> desk_hand_2_2_pose {-0.00001, -0.92, 0.1};
+  vector<double> desk_hand_2_2_pose {-0.00001, -0.92, 0.14};
 
   const vector<double> desk_hand_2_1=invkinematic(vector<double>{-0.00001, -0.92, 0.18});
   const vector<double> desk_hand_2_2=invkinematic(vector<double>{-0.00001, -0.92, 0.05});
@@ -2430,6 +2431,14 @@ int main(int argc, char ** argv) {
   ros::Subscriber arm_2_joint_state_subscriber = node.subscribe(
     "/ariac/arm2/joint_states", 10,
     &MyCompetitionClass::arm_2_joint_state_callback, &comp_class);
+
+  ros::Subscriber agv_1_state_subscriber = node.subscribe(
+    "/ariac/agv1/state", 10,
+    &MyCompetitionClass::agv_1_callback, &comp_class);
+
+  ros::Subscriber agv_2_state_subscriber = node.subscribe(
+    "/ariac/agv2/state", 10,
+    &MyCompetitionClass::agv_2_callback, &comp_class);
 
   // Subscribe to the '/ariac/logical_camera_1' topic.
   ros::Subscriber logical_camera_subscriber = node.subscribe(

@@ -370,7 +370,7 @@ public:
 
     if(shipments_1.size()>0 && !agv1_state){
       if((ros::Time::now()-start_stamp).toSec() > time_up_1){
-        time_up_1 += 100;
+        time_up_1 += 60;
         agv(1, shipments_1[0].shipment_t);return;
       }
       bool f = true;
@@ -396,6 +396,7 @@ public:
           shipments_1[0].c++;
           if(shipments_1[0].c==50){
             agv(1, shipments_1[0].shipment_t);
+            time_up_1+=60;
           }
           // shipments_1.erase(shipments_1.begin());
         }
@@ -1256,6 +1257,7 @@ public:
           shipments_2[0].c++;
           if(shipments_2[0].c==50){
             agv(2, shipments_2[0].shipment_t);
+            time_up_2+=130;
           }
           // shipments_1.erase(shipments_1.begin());
         }
@@ -2399,7 +2401,7 @@ private:
   bool trans_lock=false; // too lazy to use real lock, mostly ok
   bool signal_1=false, signal_2=false;
 
-  double time_up_1 = 445, time_up_2 = 360;
+  double time_up_1 = 435, time_up_2 = 360;
 };
 
 // void proximity_sensor_callback(const sensor_msgs::Range::ConstPtr & msg) {

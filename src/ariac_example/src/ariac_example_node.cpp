@@ -800,7 +800,7 @@ public:
             // arm limitation
             if(-1.05 + y_d_1 - y_r_1 < -1.29) y_r_1 = 1.29-1.05 + y_d_1;
             auto p1 = invkinematic(vector<double>{0.00001 + x_d_1 - x_r_1, -1.05 + y_d_1 - y_r_1, -0.0});
-            auto p2 = invkinematic(vector<double>{0.00001 + x_d_1 - x_r_1, -1.05 + y_d_1 - y_r_1, -0.1});
+            auto p2 = invkinematic(vector<double>{0.00001 + x_d_1 - x_r_1, -1.05 + y_d_1 - y_r_1, -0.05});
             p1[5] -= dtheta_1;
             // cout<<y_d_1 << " =-=-=-= "<<y_r_1<<endl;
             // for(auto w:vector<double>{0.00001 + x_d_1 - x_r_1, -1.05 + y_d_1 - y_r_1, 0.1}){
@@ -995,7 +995,7 @@ public:
             open_gripper(1);
             auto p1 = invkinematic(vector<double>{0.00001 + inv_x_1, -1.05 + inv_y_1, -0.06});
             auto p2 = invkinematic(vector<double>{0.00001 + inv_x_1, -1.05 + inv_y_1, -0.23});
-            auto p3 = invkinematic(vector<double>{0.00001 + inv_x_1, -1.05 + inv_y_1, -0.05 + double(fail_1)/100});
+            auto p3 = invkinematic(vector<double>{0.00001 + inv_x_1, -1.05 + inv_y_1, -0.05 + double(fail_1+1)/100});
             
             send_arm_to_state_n(
               arm_1_joint_trajectory_publisher_, 
@@ -1218,7 +1218,7 @@ public:
     //       cout<<endl;
     if(shipments_2.size()>0 && !agv2_state){
       if((ros::Time::now()-start_stamp).toSec()>time_up_2){
-        time_up_2 += 100;
+        time_up_2 += 130;
         agv(2, shipments_2[0].shipment_t); return;
       }
       bool f = true;
@@ -1522,7 +1522,7 @@ public:
           if(des_2==1){            
             if(1.05 - y_d_2 + y_r_2 >1.29) y_r_2 = -1.05+1.29+y_d_2;
             auto p1 = invkinematic(vector<double>{0.00001 - x_d_2 - x_r_2, 1.05 - y_d_2 + y_r_2, -0.0});
-            auto p2 = invkinematic(vector<double>{0.00001 - x_d_2 - x_r_2, 1.05 - y_d_2 + y_r_2, -0.1}); 
+            auto p2 = invkinematic(vector<double>{0.00001 - x_d_2 - x_r_2, 1.05 - y_d_2 + y_r_2, -0.05}); 
             p1[5] -= dtheta_2;
             while(p1[5]>PI) p1[5]-=PI_2;
             while(p1[5]<=-PI) p1[5]+=PI_2;
@@ -1705,7 +1705,7 @@ public:
             open_gripper(1);
             auto p1 = invkinematic(vector<double>{0.00001 + inv_x_2,  1.05 - inv_y_2, -0.06});
             auto p2 = invkinematic(vector<double>{0.00001 + inv_x_2,  1.05 - inv_y_2, -0.23});
-            auto p3 = invkinematic(vector<double>{0.00001 + inv_x_2,  1.05 - inv_y_2, -0.05 + double(fail_2)/100});
+            auto p3 = invkinematic(vector<double>{0.00001 + inv_x_2,  1.05 - inv_y_2, -0.05 + double(fail_2+1)/100});
             
             send_arm_to_state_n(
               arm_2_joint_trajectory_publisher_, 
@@ -2383,7 +2383,7 @@ private:
   bool trans_lock=false; // too lazy to use real lock, mostly ok
   bool signal_1=false, signal_2=false;
 
-  double time_up_1 = 490, time_up_2 = 360;
+  double time_up_1 = 445, time_up_2 = 360;
 };
 
 // void proximity_sensor_callback(const sensor_msgs::Range::ConstPtr & msg) {

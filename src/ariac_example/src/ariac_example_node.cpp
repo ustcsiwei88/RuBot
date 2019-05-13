@@ -2061,7 +2061,7 @@ public:
         else if(height<0.030) type = DISC; //disc
         else type = PULLEY;
         events.emplace_back(stime, type);
-        cout<<type<<" comming -- "<<height<<endl;
+        //cout<<type<<" coming -- "<<height<<endl;
         
       }
       height = 0.0;

@@ -576,7 +576,7 @@ public:
           ros::Duration tmp = ros::Time::now() - events[ind].first;
           double ttc = 2.8;
           double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.55 + 0.01;
-          if(events[ind].second==2 || events[ind].second==4) dist += 0.005;
+          if(events[ind].second==2 || events[ind].second==4) dist += 0.015;
           if(events[ind].second==3) dist -= 0.022;
           if(events[ind].second==5) dist -= 0.075;
           // double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.25 - 0.06;

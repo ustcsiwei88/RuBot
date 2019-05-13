@@ -2304,7 +2304,7 @@ private:
   const vector<double> desk_hand_1_0 = invkinematic(vector<double>{-0.00001, 0.92, 0.28});
 
   vector<double> desk_hand_1_1_pose {-0.00001, 0.92, 0.18};
-  vector<double> desk_hand_1_2_pose {-0.00001, 0.92, 0.14};
+  vector<double> desk_hand_1_2_pose {-0.00001, 0.92, 0.15};
 
   const vector<double> desk_hand_1_1 = invkinematic(vector<double>{-0.00001, 0.92, 0.17});
   const vector<double> desk_hand_1_2 = invkinematic(vector<double>{-0.00001, 0.92, 0.05});
@@ -2333,7 +2333,7 @@ private:
   const vector<double> desk_hand_2_0=invkinematic(vector<double>{-0.00001, -0.92, 0.27});  
 
   vector<double> desk_hand_2_1_pose {-0.00001, -0.92, 0.18};
-  vector<double> desk_hand_2_2_pose {-0.00001, -0.92, 0.14};
+  vector<double> desk_hand_2_2_pose {-0.00001, -0.92, 0.15};
 
   const vector<double> desk_hand_2_1=invkinematic(vector<double>{-0.00001, -0.92, 0.18});
   const vector<double> desk_hand_2_2=invkinematic(vector<double>{-0.00001, -0.92, 0.05});

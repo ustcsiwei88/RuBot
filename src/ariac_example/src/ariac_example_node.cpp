@@ -362,6 +362,12 @@ public:
       else send_arm_to_zero_state(arm_1_joint_trajectory_publisher_);
       return;
     }
+
+    if(rm_sig_1){
+      rm_sig_1=false;
+      shipments_1.erase(shipments_1.begin());
+    }
+
     if(shipments_1.size()>0 && !agv1_state){
       if((ros::Time::now()-start_stamp).toSec() > time_up_1){
         time_up_1 += 100;
@@ -1210,6 +1216,11 @@ public:
       }
       else send_arm_to_zero_state(arm_2_joint_trajectory_publisher_);
       return;
+    }
+
+    if(rm_sig_2){
+      rm_sig_2=false;
+      shipments_2.erase(shipments_2.begin());
     }
 
     // cout<<arm_2_state<<"---"<<endl;
@@ -2157,7 +2168,8 @@ public:
   void agv_1_callback(const std_msgs::String::ConstPtr &msg){
     if(agv1_state){
       if(msg->data[0]=='r' && msg->data[2]=='a'){
-        shipments_1.erase(shipments_1.begin());
+        //shipments_1.erase(shipments_1.begin());
+        rm_sig_1=true;
         agv1_state=false;
       }
     }
@@ -2171,7 +2183,8 @@ public:
   void agv_2_callback(const std_msgs::String::ConstPtr &msg){
     if(agv2_state){
       if(msg->data[0]=='r' && msg->data[2]=='a'){
-        shipments_2.erase(shipments_2.begin());
+        //shipments_2.erase(shipments_2.begin());
+        rm_sig_2=true;
         agv2_state=false;
       }
     }
@@ -2235,6 +2248,8 @@ private:
   double belt_power;
 
   bool trans_1, trans_2;
+
+  bool rm_sig_1=false, rm_sig_2=false;
 
   vector<double> arm_1_joint;
   vector<double> arm_2_joint;

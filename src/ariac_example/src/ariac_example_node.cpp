@@ -569,7 +569,7 @@ public:
           ros::Duration tmp = ros::Time::now() - events[ind].first;
           double ttc = 2.8;
           double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.55 + 0.01;
-          if(events[ind].second==2) dist += 0.005;
+          if(events[ind].second==2 || events[ind].second==4) dist += 0.005;
           if(events[ind].second==3) dist -= 0.022;
           if(events[ind].second==5) dist -= 0.075;
           // double dist = (tmp.toSec() + ttc) * belt_power/100 * maxBeltVel + 0.92 - 2.25 - 0.06;
@@ -2108,11 +2108,11 @@ public:
     // srv.request.shipment_type = string("order_") + to_string(order) + string("_shipment_") + to_string(kit);
     if(num==1){
       agv_1.call(srv);
-      agv1_state=true;
+      //agv1_state=true;
     }
     else{
       agv_2.call(srv);
-      agv2_state=true;
+      //agv2_state=true;
     }
   }
 

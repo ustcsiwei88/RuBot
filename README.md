@@ -4,7 +4,7 @@ RuBot 2019
 2. Team RuBot got 2nd spot in ARIAC 2019.
 3. The solution structure is based on the given cpp example (ariac_example_node.cpp, sample_gear_conf.yaml).
 
-For more info (setup of the contest environment), see https://bitbucket.org/osrf/ariac/wiki/2019/Home.
+For more info (setup of the contest environment), please refer to https://bitbucket.org/osrf/ariac/wiki/2019/Home.
 
 ```
 @article{FenGuoBekYu21RCIM,

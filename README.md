@@ -6,6 +6,7 @@ RuBot 2019
 
 For more info (setup of the contest environment), please refer to https://bitbucket.org/osrf/ariac/wiki/2019/Home.
 
+If you are interested in this project, please consider reading the paper below:
 ```
 @article{FenGuoBekYu21RCIM,
   author = {Si Wei Feng and Teng Guo and Kostas E. Bekris and Jingjin Yu},
